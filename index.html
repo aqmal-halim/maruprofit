@@ -45,8 +45,8 @@
 
         .chart-height { height: 70vh; width: 100%; }
         .gauge-height { height: 320px; width: 100%; }
-        /* Adjusted news height for better mobile scrolling */
-        .news-height { height: 600px; width: 100%; }
+        /* Improved height for CryptoPanic */
+        .news-height { height: 500px; width: 100%; border: none; }
 
         .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .level-card {
@@ -90,6 +90,7 @@
         <h2>Technical Sentiment</h2>
         <div class="gauge-height">
             <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
                 <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
                 {
                     "interval": "1m",
@@ -106,26 +107,14 @@
     </div>
 
     <div class="card">
-        <h2>Live News Wire (CryptoPanic)</h2>
-        <div class="news-height">
-            <a href="https://cryptopanic.com/" 
-               target="_blank" 
-               data-news_feed="all" 
-               data-font_family="sans-serif" 
-               data-bg_color="#161b22" 
-               data-text_color="#c9d1d9" 
-               data-link_color="#58a6ff" 
-               data-header_bg_color="#0d1117" 
-               data-header_text_color="#c9d1d9" 
-               class="CryptoPanicWidget">Latest Crypto News</a>
-            <script src="https://www.cryptopanic.com/static/widgets/dist/wrapper.js"></script>
-        </div>
+        <h2>Live News Wire</h2>
+        <iframe width="100%" height="500" src="https://cryptopanic.com/widgets/news/?bg_color=161b22&font_family=sans-serif&header_bg_color=0d1117&header_text_color=c9d1d9&link_color=58a6ff&news_feed=all&text_color=c9d1d9" frameborder="0" scrolling="yes"></iframe>
     </div>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // Initialize Chart with RSI, VWAP, and MACD
+    // Initialize Chart
     new TradingView.widget({
         "autosize": true,
         "symbol": "BINANCE:BTCUSDT",
@@ -139,10 +128,7 @@
             "RSI@tv-basicstudies",
             "VWAP@tv-basicstudies",
             "MACD@tv-basicstudies"
-        ],
-        "overrides": {
-            "mainSeriesProperties.style": 1 // Candles
-        }
+        ]
     });
 
     // Fetch Binance Live Data
@@ -159,7 +145,6 @@
             document.getElementById('day-high').innerText = `$${high}`;
             document.getElementById('day-low').innerText = `$${low}`;
 
-            // OB Zone Logic: 0.1% to 0.3% range above daily low
             const obStart = (low * 1.001).toFixed(2);
             const obEnd = (low * 1.003).toFixed(2);
             document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
