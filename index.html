@@ -45,7 +45,7 @@
 
         .chart-height { height: 70vh; width: 100%; }
         .gauge-height { height: 320px; width: 100%; }
-        .news-height { height: 500px; width: 100%; overflow-y: auto; }
+        .news-height { height: 600px; width: 100%; border: none; }
 
         .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .level-card {
@@ -57,14 +57,8 @@
         }
         .val { display: block; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
         .label { font-size: 0.65rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
-        h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 5px 0; text-transform: uppercase; }
-        
-        .news-item { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 0.85rem; }
-        .news-item:last-child { border-bottom: none; }
-        .news-time { color: var(--accent); font-size: 0.7rem; display: block; margin-bottom: 4px; }
-        .news-source { color: #8b949e; font-size: 0.7rem; float: right; }
-        
-        #news-status { font-size: 0.6rem; color: var(--green); margin-bottom: 10px; display: block; }
+        h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; }
+        .timestamp { font-size: 0.6rem; color: #8b949e; margin-bottom: 10px; display: block; }
     </style>
 </head>
 <body>
@@ -112,12 +106,22 @@
     </div>
 
     <div class="card">
-        <h2>Live News Wire (BTC Only)</h2>
-        <span id="news-status">● Filtering for BTC Headlines</span>
-        <div class="news-height" id="news-wire">
-            <div class="news-item">
-                <span class="news-time">Scanning...</span>
-                Filtering for Bitcoin-specific headlines...
+        <h2>BTC Live News Wire</h2>
+        <span class="timestamp">Direct Ticker-Filtered Feed</span>
+        <div class="news-height">
+            <div class="tradingview-widget-container">
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
+                {
+                    "feedMode": "all_symbols",
+                    "symbol": "BINANCE:BTCUSDT",
+                    "colorTheme": "dark",
+                    "isTransparent": false,
+                    "displayMode": "regular",
+                    "width": "100%",
+                    "height": "100%",
+                    "locale": "en"
+                }
+                </script>
             </div>
         </div>
     </div>
@@ -147,54 +151,11 @@
             const obStart = (parseFloat(data.lowPrice) * 1.001).toFixed(2);
             const obEnd = (parseFloat(data.lowPrice) * 1.003).toFixed(2);
             document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
-        } catch (e) { console.error("Price error", e); }
-    }
-
-    async function updateNews() {
-        // High-speed API query
-        const feedUrl = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=50";
-        const btcKeywords = ["btc", "bitcoin", "halving", "satoshi", "etf"];
-        
-        try {
-            const response = await fetch(feedUrl);
-            const data = await response.json();
-            const newsContainer = document.getElementById('news-wire');
-            newsContainer.innerHTML = '';
-
-            let count = 0;
-            data.data.catalogs[0].articles.forEach(article => {
-                const titleLower = article.title.toLowerCase();
-                // Client-side filtering logic
-                if (btcKeywords.some(key => titleLower.includes(key))) {
-                    const item = document.createElement('div');
-                    item.className = 'news-item';
-                    const time = new Date(article.releaseDate).toLocaleTimeString();
-                    item.innerHTML = `
-                        <span class="news-source">Binance News</span>
-                        <span class="news-time">${time}</span>
-                        <strong>${article.title}</strong>
-                    `;
-                    newsContainer.appendChild(item);
-                    count++;
-                }
-            });
-
-            if(count === 0) {
-                newsContainer.innerHTML = '<div class="news-item">No new BTC-specific headlines in last batch.</div>';
-            }
-            document.getElementById('news-status').innerText = `● BTC Filter Active (${count} found)`;
-        } catch (e) {
-            // Fallback to BTC-specific pre-filtered RSS widget
-            document.getElementById('news-wire').innerHTML = `
-                <iframe width="100%" height="450" src="https://rss.app/embed/v1/feed/pXl6Z3iU0aR5G9kH" frameborder="0"></iframe>
-            `;
-        }
+        } catch (e) { console.error("Price fetch error", e); }
     }
 
     setInterval(updateDashboard, 3000);
-    setInterval(updateNews, 60000);
     updateDashboard();
-    updateNews();
 </script>
 
 </body>
