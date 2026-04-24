@@ -59,7 +59,6 @@
         .label { font-size: 0.65rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
         h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 5px 0; text-transform: uppercase; }
         
-        /* News Item Styles */
         .news-item { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 0.85rem; }
         .news-item:last-child { border-bottom: none; }
         .news-time { color: var(--accent); font-size: 0.7rem; display: block; margin-bottom: 4px; }
@@ -113,12 +112,12 @@
     </div>
 
     <div class="card">
-        <h2>Live News Wire</h2>
-        <span id="news-status">● Live Sync Active</span>
+        <h2>Live News Wire (BTC Only)</h2>
+        <span id="news-status">● Filtering for BTC Headlines</span>
         <div class="news-height" id="news-wire">
             <div class="news-item">
-                <span class="news-time">Loading real-time data...</span>
-                Fetching latest headlines from Binance Square...
+                <span class="news-time">Scanning...</span>
+                Filtering for Bitcoin-specific headlines...
             </div>
         </div>
     </div>
@@ -126,7 +125,6 @@
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // Initialize Chart
     new TradingView.widget({
         "autosize": true,
         "symbol": "BINANCE:BTCUSDT",
@@ -139,48 +137,56 @@
         "studies": ["RSI@tv-basicstudies", "VWAP@tv-basicstudies", "MACD@tv-basicstudies"]
     });
 
-    // Main update loop for Price & Levels
     async function updateDashboard() {
         try {
             const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
             const data = await res.json();
-            
             document.getElementById('btc-price').innerText = `$${parseFloat(data.lastPrice).toFixed(2)}`;
             document.getElementById('day-high').innerText = `$${parseFloat(data.highPrice).toFixed(2)}`;
             document.getElementById('day-low').innerText = `$${parseFloat(data.lowPrice).toFixed(2)}`;
-
             const obStart = (parseFloat(data.lowPrice) * 1.001).toFixed(2);
             const obEnd = (parseFloat(data.lowPrice) * 1.003).toFixed(2);
             document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
-
-        } catch (e) { console.error("Price fetch error", e); }
+        } catch (e) { console.error("Price error", e); }
     }
 
-    // Direct Binance News Feed Simulation (Fastest available for web without API keys)
     async function updateNews() {
-        const feedUrl = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=10";
+        // High-speed API query
+        const feedUrl = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=50";
+        const btcKeywords = ["btc", "bitcoin", "halving", "satoshi", "etf"];
+        
         try {
             const response = await fetch(feedUrl);
             const data = await response.json();
             const newsContainer = document.getElementById('news-wire');
             newsContainer.innerHTML = '';
 
+            let count = 0;
             data.data.catalogs[0].articles.forEach(article => {
-                const item = document.createElement('div');
-                item.className = 'news-item';
-                const time = new Date(article.releaseDate).toLocaleTimeString();
-                item.innerHTML = `
-                    <span class="news-source">Binance News</span>
-                    <span class="news-time">${time}</span>
-                    <strong>${article.title}</strong>
-                `;
-                newsContainer.appendChild(item);
+                const titleLower = article.title.toLowerCase();
+                // Client-side filtering logic
+                if (btcKeywords.some(key => titleLower.includes(key))) {
+                    const item = document.createElement('div');
+                    item.className = 'news-item';
+                    const time = new Date(article.releaseDate).toLocaleTimeString();
+                    item.innerHTML = `
+                        <span class="news-source">Binance News</span>
+                        <span class="news-time">${time}</span>
+                        <strong>${article.title}</strong>
+                    `;
+                    newsContainer.appendChild(item);
+                    count++;
+                }
             });
-            document.getElementById('news-status').innerText = "● Last Sync: " + new Date().toLocaleTimeString();
+
+            if(count === 0) {
+                newsContainer.innerHTML = '<div class="news-item">No new BTC-specific headlines in last batch.</div>';
+            }
+            document.getElementById('news-status').innerText = `● BTC Filter Active (${count} found)`;
         } catch (e) {
-            // Fallback content if CORS blocks direct Binance BAPI
+            // Fallback to BTC-specific pre-filtered RSS widget
             document.getElementById('news-wire').innerHTML = `
-                <iframe width="100%" height="450" src="https://rss.app/embed/v1/feed/t4G8ZfN1JmU8K0Xm" frameborder="0"></iframe>
+                <iframe width="100%" height="450" src="https://rss.app/embed/v1/feed/pXl6Z3iU0aR5G9kH" frameborder="0"></iframe>
             `;
         }
     }
