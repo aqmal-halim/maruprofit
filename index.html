@@ -30,19 +30,25 @@
             border: 1px solid #30363d;
             border-radius: 12px;
             padding: 10px;
-            overflow: hidden;
+            margin-bottom: 15px;
         }
-        /* Fixes the "badly done" chart height */
         .chart-container {
-            height: 500px;
+            height: 550px;
             width: 100%;
         }
         h2 { color: #58a6ff; font-size: 1rem; margin-bottom: 10px; }
+        
+        .smc-alert {
+            background: #1c2128;
+            border-left: 4px solid #f26722;
+            padding: 10px;
+            font-size: 0.85rem;
+            margin-top: 10px;
+        }
 
-        /* Mobile Optimization */
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; }
-            .chart-container { height: 400px; }
+            .chart-container { height: 450px; }
         }
     </style>
 </head>
@@ -50,12 +56,12 @@
 
 <header>
     <h1 style="font-size: 1.5rem; margin: 0;">MaruProfit ₿</h1>
-    <span style="color: #3fb950; font-size: 0.8rem;">● LIVE DATA</span>
+    <span style="color: #3fb950; font-size: 0.8rem;">● SMART MONEY FLOW</span>
 </header>
 
 <div class="container">
     <div class="card">
-        <h2>BTC/USDT 1m Scalp</h2>
+        <h2>BTC/USDT 1m Scalp (VWAP/RSI/MACD)</h2>
         <div class="chart-container" id="tv-chart">
             <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
             <script type="text/javascript">
@@ -69,15 +75,27 @@
                 "style": "1",
                 "locale": "en",
                 "enable_publishing": false,
-                "allow_symbol_change": true,
-                "container_id": "tv-chart"
+                "hide_top_toolbar": false,
+                "save_image": false,
+                "container_id": "tv-chart",
+                /* Adding indicators here */
+                "studies": [
+                    "RSI@tv-basicstudies",
+                    "MACD@tv-basicstudies",
+                    "VWAP@tv-basicstudies"
+                ]
             });
             </script>
+        </div>
+        
+        <div class="smc-alert">
+            <strong>SMC Insight:</strong> Look for Order Blocks & Liquidity Sweeps on 1m/5m confluence. 
+            <i>Note: BOS/CHoCH requires manual validation on this feed.</i>
         </div>
     </div>
 
     <div class="card">
-        <h2>Technical Sentiment</h2>
+        <h2>Indicator Metrics</h2>
         <div class="tradingview-widget-container">
             <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
             {
@@ -91,18 +109,18 @@
             </script>
         </div>
 
-        <h2 style="margin-top: 20px;">Real-Time News</h2>
+        <h2 style="margin-top: 20px;">Market Sentiment News</h2>
         <div class="tradingview-widget-container">
             <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
             {
-                "feedMode": "all_symbols",
+                "feedMode": "symbol",
+                "symbol": "BINANCE:BTCUSDT",
+                "colorTheme": "dark",
                 "isTransparent": false,
                 "displayMode": "regular",
                 "width": "100%",
                 "height": "450",
-                "colorTheme": "dark",
-                "locale": "en",
-                "symbol": "BINANCE:BTCUSDT"
+                "locale": "en"
             }
             </script>
         </div>
