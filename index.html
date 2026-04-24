@@ -45,7 +45,7 @@
 
         .chart-height { height: 70vh; width: 100%; }
         .gauge-height { height: 320px; width: 100%; }
-        .news-height { height: 500px; width: 100%; border: none; }
+        .news-height { height: 600px; width: 100%; border: none; }
 
         .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .level-card {
@@ -57,7 +57,7 @@
         }
         .val { display: block; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
         .label { font-size: 0.65rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
-        h2 { font-size: 0.9rem; color: var(--accent); margin: 0; text-transform: uppercase; }
+        h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; }
         .timestamp { font-size: 0.6rem; color: #8b949e; margin-bottom: 10px; display: block; }
     </style>
 </head>
@@ -106,23 +106,16 @@
     </div>
 
     <div class="card">
-        <h2>Real-Time Binance News</h2>
-        <span class="timestamp" id="news-update">Syncing with exchange...</span>
+        <h2>Live News Wire</h2>
+        <span class="timestamp" id="news-update">Real-time CryptoPanic Feed</span>
         <div class="news-height">
-            <div class="tradingview-widget-container">
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
-                {
-                    "feedMode": "market",
-                    "market": "crypto",
-                    "colorTheme": "dark",
-                    "isTransparent": false,
-                    "displayMode": "regular",
-                    "width": "100%",
-                    "height": "100%",
-                    "locale": "en"
-                }
-                </script>
-            </div>
+            <iframe 
+                width="100%" 
+                height="600" 
+                src="https://cryptopanic.com/widgets/news/?bg_color=161b22&font_family=sans-serif&header_bg_color=0d1117&header_text_color=c9d1d9&link_color=58a6ff&news_feed=all&text_color=c9d1d9&currencies=BTC" 
+                frameborder="0" 
+                scrolling="yes">
+            </iframe>
         </div>
     </div>
 </div>
@@ -150,15 +143,11 @@
             const price = parseFloat(data.lastPrice).toFixed(2);
             document.getElementById('btc-price').innerText = `$${price}`;
             document.getElementById('day-high').innerText = `$${parseFloat(data.highPrice).toFixed(2)}`;
-            document.getElementById('day-low').innerText = `$${parseFloat(data.lowPrice).toFixed(2)}`;
+            document.getElementById('day-low').innerText = `$${parseFloat(data.lowPrice).toFixed(Low)}`;
 
             const obStart = (data.lowPrice * 1.001).toFixed(2);
             const obEnd = (data.lowPrice * 1.003).toFixed(2);
             document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
-            
-            // Update time stamp
-            const now = new Date();
-            document.getElementById('news-update').innerText = "Last Sync: " + now.toLocaleTimeString();
 
         } catch (e) { console.error("Data error", e); }
     }
