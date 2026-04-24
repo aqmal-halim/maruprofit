@@ -19,7 +19,7 @@
             color: #c9d1d9;
             font-family: sans-serif;
             margin: 0;
-            padding: 5px;
+            padding: 8px;
         }
         header {
             padding: 10px;
@@ -27,27 +27,27 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 100;
         }
         .price-live { font-weight: bold; color: var(--green); }
+        .container { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
         
-        .container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-        
-        /* Fixed Chart Visibility */
-        .chart-card {
+        .card {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 8px;
-            height: 60vh; /* Takes 60% of screen height */
-            width: 100%;
+            padding: 10px;
             overflow: hidden;
         }
 
-        /* Order Block & Levels Section */
-        .levels-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
+        .chart-height { height: 65vh; width: 100%; }
+        .gauge-height { height: 320px; width: 100%; }
+        .news-height { height: 450px; width: 100%; }
+
+        .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .level-card {
             background: var(--card);
             border: 1px solid var(--border);
@@ -55,8 +55,9 @@
             padding: 12px;
             text-align: center;
         }
-        .val { display: block; font-size: 1.2rem; font-weight: bold; margin-top: 5px; }
-        .label { font-size: 0.7rem; text-transform: uppercase; color: #8b949e; }
+        .val { display: block; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
+        .label { font-size: 0.65rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
+        h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -67,27 +68,66 @@
 </header>
 
 <div class="container">
-    <div class="chart-card" id="tv-chart"></div>
+    <div class="card chart-height" id="tv-chart"></div>
 
     <div class="levels-grid">
         <div class="level-card" style="border-top: 3px solid var(--red);">
-            <span class="label">24h High (Key Resistance)</span>
+            <span class="label">24h High (Res)</span>
             <span class="val" id="day-high">---</span>
         </div>
         <div class="level-card" style="border-top: 3px solid var(--green);">
-            <span class="label">24h Low (Key Support)</span>
+            <span class="label">24h Low (Supp)</span>
             <span class="val" id="day-low">---</span>
         </div>
         <div class="level-card" style="grid-column: span 2; border-left: 4px solid var(--orange);">
-            <span class="label">Potential Bullish OB Zone (Manual Validation)</span>
+            <span class="label">Potential Bullish OB Zone</span>
             <span class="val" id="ob-zone" style="color: var(--orange);">Calculating...</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Technical Sentiment</h2>
+        <div class="gauge-height">
+            <div class="tradingview-widget-container">
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                {
+                    "interval": "1m",
+                    "width": "100%",
+                    "height": "100%",
+                    "symbol": "BINANCE:BTCUSDT",
+                    "showIntervalTabs": true,
+                    "colorTheme": "dark",
+                    "locale": "en"
+                }
+                </script>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Market Pulse News</h2>
+        <div class="news-height">
+            <div class="tradingview-widget-container">
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
+                {
+                    "feedMode": "symbol",
+                    "symbol": "BINANCE:BTCUSDT",
+                    "colorTheme": "dark",
+                    "isTransparent": false,
+                    "displayMode": "regular",
+                    "width": "100%",
+                    "height": "100%",
+                    "locale": "en"
+                }
+                </script>
+            </div>
         </div>
     </div>
 </div>
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
-    // 1. Initialize Chart with optimized mobile height
+    // Initialize Chart with RSI, VWAP, and MACD
     new TradingView.widget({
         "autosize": true,
         "symbol": "BINANCE:BTCUSDT",
@@ -97,10 +137,14 @@
         "style": "1",
         "locale": "en",
         "container_id": "tv-chart",
-        "studies": ["RSI@tv-basicstudies", "VWAP@tv-basicstudies"]
+        "studies": [
+            "RSI@tv-basicstudies",
+            "VWAP@tv-basicstudies",
+            "MACD@tv-basicstudies"
+        ]
     });
 
-    // 2. Fetch Live Binance Data for Levels
+    // Fetch Binance Live Data
     async function updateLevels() {
         try {
             const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
@@ -114,7 +158,6 @@
             document.getElementById('day-high').innerText = `$${high}`;
             document.getElementById('day-low').innerText = `$${low}`;
 
-            // Simplified logic: Bullish OB often forms just above the recent low
             const obStart = (low * 1.001).toFixed(2);
             const obEnd = (low * 1.003).toFixed(2);
             document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
