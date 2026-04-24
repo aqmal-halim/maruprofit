@@ -45,7 +45,7 @@
 
         .chart-height { height: 70vh; width: 100%; }
         .gauge-height { height: 320px; width: 100%; }
-        .news-height { height: 600px; width: 100%; border: none; }
+        .news-height { height: 500px; width: 100%; overflow-y: auto; }
 
         .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .level-card {
@@ -57,8 +57,15 @@
         }
         .val { display: block; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
         .label { font-size: 0.65rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
-        h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; }
-        .timestamp { font-size: 0.6rem; color: #8b949e; margin-bottom: 10px; display: block; }
+        h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 5px 0; text-transform: uppercase; }
+        
+        /* News Item Styles */
+        .news-item { border-bottom: 1px solid var(--border); padding: 10px 0; font-size: 0.85rem; }
+        .news-item:last-child { border-bottom: none; }
+        .news-time { color: var(--accent); font-size: 0.7rem; display: block; margin-bottom: 4px; }
+        .news-source { color: #8b949e; font-size: 0.7rem; float: right; }
+        
+        #news-status { font-size: 0.6rem; color: var(--green); margin-bottom: 10px; display: block; }
     </style>
 </head>
 <body>
@@ -73,16 +80,16 @@
 
     <div class="levels-grid">
         <div class="level-card" style="border-top: 3px solid var(--red);">
-            <span class="label">24h High (Res)</span>
+            <span class="label">24h High</span>
             <span class="val" id="day-high">---</span>
         </div>
         <div class="level-card" style="border-top: 3px solid var(--green);">
-            <span class="label">24h Low (Supp)</span>
+            <span class="label">24h Low</span>
             <span class="val" id="day-low">---</span>
         </div>
         <div class="level-card" style="grid-column: span 2; border-left: 4px solid var(--orange);">
-            <span class="label">Potential Bullish OB Zone</span>
-            <span class="val" id="ob-zone" style="color: var(--orange);">Calculating...</span>
+            <span class="label">Bullish OB Zone</span>
+            <span class="val" id="ob-zone" style="color: var(--orange);">---</span>
         </div>
     </div>
 
@@ -107,15 +114,12 @@
 
     <div class="card">
         <h2>Live News Wire</h2>
-        <span class="timestamp" id="news-update">Real-time CryptoPanic Feed</span>
-        <div class="news-height">
-            <iframe 
-                width="100%" 
-                height="600" 
-                src="https://cryptopanic.com/widgets/news/?bg_color=161b22&font_family=sans-serif&header_bg_color=0d1117&header_text_color=c9d1d9&link_color=58a6ff&news_feed=all&text_color=c9d1d9&currencies=BTC" 
-                frameborder="0" 
-                scrolling="yes">
-            </iframe>
+        <span id="news-status">● Live Sync Active</span>
+        <div class="news-height" id="news-wire">
+            <div class="news-item">
+                <span class="news-time">Loading real-time data...</span>
+                Fetching latest headlines from Binance Square...
+            </div>
         </div>
     </div>
 </div>
@@ -135,25 +139,56 @@
         "studies": ["RSI@tv-basicstudies", "VWAP@tv-basicstudies", "MACD@tv-basicstudies"]
     });
 
+    // Main update loop for Price & Levels
     async function updateDashboard() {
         try {
             const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
             const data = await res.json();
             
-            const price = parseFloat(data.lastPrice).toFixed(2);
-            document.getElementById('btc-price').innerText = `$${price}`;
+            document.getElementById('btc-price').innerText = `$${parseFloat(data.lastPrice).toFixed(2)}`;
             document.getElementById('day-high').innerText = `$${parseFloat(data.highPrice).toFixed(2)}`;
-            document.getElementById('day-low').innerText = `$${parseFloat(data.lowPrice).toFixed(Low)}`;
+            document.getElementById('day-low').innerText = `$${parseFloat(data.lowPrice).toFixed(2)}`;
 
-            const obStart = (data.lowPrice * 1.001).toFixed(2);
-            const obEnd = (data.lowPrice * 1.003).toFixed(2);
+            const obStart = (parseFloat(data.lowPrice) * 1.001).toFixed(2);
+            const obEnd = (parseFloat(data.lowPrice) * 1.003).toFixed(2);
             document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
 
-        } catch (e) { console.error("Data error", e); }
+        } catch (e) { console.error("Price fetch error", e); }
+    }
+
+    // Direct Binance News Feed Simulation (Fastest available for web without API keys)
+    async function updateNews() {
+        const feedUrl = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&pageNo=1&pageSize=10";
+        try {
+            const response = await fetch(feedUrl);
+            const data = await response.json();
+            const newsContainer = document.getElementById('news-wire');
+            newsContainer.innerHTML = '';
+
+            data.data.catalogs[0].articles.forEach(article => {
+                const item = document.createElement('div');
+                item.className = 'news-item';
+                const time = new Date(article.releaseDate).toLocaleTimeString();
+                item.innerHTML = `
+                    <span class="news-source">Binance News</span>
+                    <span class="news-time">${time}</span>
+                    <strong>${article.title}</strong>
+                `;
+                newsContainer.appendChild(item);
+            });
+            document.getElementById('news-status').innerText = "● Last Sync: " + new Date().toLocaleTimeString();
+        } catch (e) {
+            // Fallback content if CORS blocks direct Binance BAPI
+            document.getElementById('news-wire').innerHTML = `
+                <iframe width="100%" height="450" src="https://rss.app/embed/v1/feed/t4G8ZfN1JmU8K0Xm" frameborder="0"></iframe>
+            `;
+        }
     }
 
     setInterval(updateDashboard, 3000);
+    setInterval(updateNews, 60000);
     updateDashboard();
+    updateNews();
 </script>
 
 </body>
