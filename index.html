@@ -42,6 +42,7 @@ overflow-x: hidden;
 min-height: 100vh;
 }
 
+/* Grid noise texture */
 body::before {
 content: '';
 position: fixed;
@@ -54,6 +55,7 @@ pointer-events: none;
 z-index: 0;
 }
 
+/* HEADER */
 header {
 position: sticky;
 top: 0;
@@ -132,6 +134,7 @@ color: var(--muted);
 white-space: nowrap;
 }
 
+/* MAIN LAYOUT */
 .main {
 position: relative;
 z-index: 1;
@@ -141,12 +144,12 @@ flex-direction: column;
 gap: 12px;
 }
 
+/* PANEL */
 .panel {
 background: var(--panel);
 border: 1px solid var(--border);
 border-radius: 10px;
 overflow: hidden;
-animation: fadeSlideIn 0.4s ease forwards;
 }
 
 .panel-header {
@@ -175,6 +178,7 @@ color: var(--muted);
 border: 1px solid var(--border2);
 }
 
+/* SIGNAL BAR */
 .signal-bar {
 background: var(--panel2);
 border: 1px solid var(--border);
@@ -380,8 +384,19 @@ flex: 1;
 text-align: right;
 }
 
+.ob-pill {
+font-family: 'Space Mono', monospace;
+font-size: 0.65rem;
+font-weight: 700;
+padding: 2px 8px;
+border-radius: 4px;
+}
+.ob-bull { background: rgba(0,230,118,0.08); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+.ob-bear { background: rgba(255,61,90,0.08); color: var(--red); border: 1px solid rgba(255,61,90,0.2); }
+
 .chart-wrap { height: 65vh; min-height: 320px; }
 .tv-wrap { width: 100%; height: 100%; }
+.tv-wrap .tradingview-widget-container { width: 100%; height: 100%; }
 
 .tabs {
 display: flex;
@@ -443,6 +458,7 @@ text-transform: uppercase;
 cursor: pointer;
 transition: all 0.2s;
 }
+.calc-btn:hover { background: rgba(0,212,255,0.16); }
 .calc-output {
 background: rgba(0,0,0,0.25);
 border: 1px solid var(--border);
@@ -472,10 +488,216 @@ margin-top: 4px;
 from { opacity: 0; transform: translateY(8px); }
 to { opacity: 1; transform: translateY(0); }
 }
+.panel { animation: fadeSlideIn 0.4s ease forwards; }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── INSTITUTIONAL VALUE MODULE ── */
+.ivm-grid {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 8px;
+padding: 12px;
+}
+.ivm-card {
+background: rgba(0,0,0,0.2);
+border: 1px solid var(--border);
+border-radius: 8px;
+padding: 12px 10px 10px;
+display: flex;
+flex-direction: column;
+gap: 4px;
+position: relative;
+overflow: hidden;
+transition: border-color 0.4s;
+}
+.ivm-card::before {
+content: '';
+position: absolute;
+top: 0; left: 0; right: 0;
+height: 2px;
+background: var(--ivm-accent, var(--border2));
+transition: background 0.4s;
+}
+.ivm-card.wide { grid-column: span 2; }
+.ivm-label {
+font-size: 0.58rem;
+text-transform: uppercase;
+letter-spacing: 1.5px;
+color: var(--muted);
+}
+.ivm-value {
+font-family: 'Space Mono', monospace;
+font-weight: 700;
+font-size: 1rem;
+color: var(--text);
+transition: color 0.4s;
+}
+.ivm-sub {
+font-family: 'Space Mono', monospace;
+font-size: 0.62rem;
+color: var(--muted);
+margin-top: 2px;
+}
+
+.vwap-bar-wrap {
+margin-top: 6px;
+position: relative;
+height: 6px;
+background: var(--border);
+border-radius: 3px;
+overflow: visible;
+}
+.vwap-bar-fill {
+position: absolute;
+left: 0; top: 0; height: 100%;
+border-radius: 3px;
+transition: width 0.8s cubic-bezier(.4,0,.2,1), background 0.4s;
+}
+.vwap-bar-thumb {
+position: absolute;
+top: -4px;
+width: 14px; height: 14px;
+border-radius: 50%;
+background: var(--accent);
+border: 2px solid var(--bg);
+transform: translateX(-50%);
+transition: left 0.8s cubic-bezier(.4,0,.2,1), background 0.4s;
+box-shadow: 0 0 6px var(--accent);
+}
+.vwap-bar-labels {
+display: flex;
+justify-content: space-between;
+font-family: 'Space Mono', monospace;
+font-size: 0.52rem;
+color: var(--muted);
+margin-top: 8px;
+}
+
+.va-strip-wrap {
+margin-top: 8px;
+position: relative;
+height: 28px;
+background: var(--border);
+border-radius: 4px;
+overflow: hidden;
+}
+.va-strip-range {
+position: absolute;
+top: 0; bottom: 0;
+background: rgba(0,212,255,0.12);
+border-left: 2px solid var(--accent);
+border-right: 2px solid var(--accent);
+transition: left 0.8s, width 0.8s;
+}
+.va-strip-poc {
+position: absolute;
+top: 0; bottom: 0;
+width: 3px;
+background: var(--gold);
+box-shadow: 0 0 6px var(--gold);
+transition: left 0.8s;
+}
+.va-strip-price {
+position: absolute;
+top: 0; bottom: 0;
+width: 2px;
+background: #fff;
+opacity: 0.7;
+transition: left 0.8s;
+}
+.va-strip-labels {
+display: flex;
+justify-content: space-between;
+font-family: 'Space Mono', monospace;
+font-size: 0.52rem;
+color: var(--muted);
+margin-top: 4px;
+padding: 0 2px;
+}
+
+.ctx-badge {
+display: inline-flex;
+align-items: center;
+gap: 6px;
+padding: 5px 12px;
+border-radius: 6px;
+font-family: 'Syne', sans-serif;
+font-weight: 700;
+font-size: 0.8rem;
+letter-spacing: 2px;
+text-transform: uppercase;
+transition: all 0.4s;
+}
+.ctx-badge.bullish {
+background: rgba(0,230,118,0.1);
+color: var(--green);
+border: 1px solid rgba(0,230,118,0.3);
+}
+.ctx-badge.bearish {
+background: rgba(255,61,90,0.1);
+color: var(--red);
+border: 1px solid rgba(255,61,90,0.25);
+}
+.ctx-badge.neutral {
+background: rgba(144,164,174,0.08);
+color: var(--neutral);
+border: 1px solid rgba(144,164,174,0.2);
+}
+
+.mr-alert {
+display: none;
+align-items: center;
+gap: 10px;
+padding: 10px 12px;
+border-radius: 7px;
+background: rgba(200,168,75,0.08);
+border: 1px solid rgba(200,168,75,0.35);
+font-size: 0.72rem;
+line-height: 1.6;
+color: var(--text);
+animation: alert-pulse 2s ease-in-out infinite;
+}
+.mr-alert.active { display: flex; }
+@keyframes alert-pulse {
+0%,100% { border-color: rgba(200,168,75,0.35); box-shadow: none; }
+50% { border-color: rgba(200,168,75,0.8); box-shadow: 0 0 12px rgba(200,168,75,0.2); }
+}
+.mr-alert-icon { font-size: 1.1rem; flex-shrink: 0; }
+.ivm-section-title { font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 10px 12px 0; }
+
+.fg-wrap { padding: 12px; }
+.fg-track {
+height: 12px;
+border-radius: 6px;
+background: linear-gradient(90deg, #ff3d5a 0%, #ff9100 25%, #ffe600 50%, #69f0ae 75%, #00e676 100%);
+position: relative;
+margin: 10px 0 6px;
+}
+.fg-thumb {
+position: absolute;
+top: -4px;
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: #fff;
+border: 2px solid var(--bg);
+transform: translateX(-50%);
+transition: left 1s cubic-bezier(.4,0,.2,1);
+box-shadow: 0 0 8px rgba(255,255,255,0.4);
+}
+.fg-labels {
+display: flex;
+justify-content: space-between;
+font-family: 'Space Mono', monospace;
+font-size: 0.55rem;
+color: var(--muted);
+}
+.fg-center { text-align: center; margin-top: 10px; }
+.fg-index { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 2rem; display: block; }
+.fg-label { font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; }
 
 .regime-row {
 display: flex;
@@ -484,18 +706,10 @@ gap: 10px;
 padding: 6px 0;
 border-bottom: 1px solid var(--border);
 }
-.regime-dot {
-width: 8px; height: 8px;
-border-radius: 50%;
-flex-shrink: 0;
-}
+.regime-row:last-child { border-bottom: none; }
+.regime-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-.confidence-wrap {
-display: flex;
-align-items: center;
-gap: 14px;
-padding: 10px 0;
-}
+.confidence-wrap { display: flex; align-items: center; gap: 14px; padding: 10px 0; }
 .ring-outer {
 width: 80px; height: 80px;
 border-radius: 50%;
@@ -516,19 +730,11 @@ align-items: center;
 justify-content: center;
 flex-direction: column;
 }
-.ring-pct {
-font-family: 'Space Mono', monospace;
-font-weight: 700;
-font-size: 0.9rem;
-color: var(--text);
-}
-.ring-lbl {
-font-size: 0.5rem;
-color: var(--muted);
-text-transform: uppercase;
-letter-spacing: 1px;
-}
+.ring-pct { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 0.9rem; color: var(--text); }
+.ring-lbl { font-size: 0.5rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
 .confidence-text { font-size: 0.72rem; color: var(--text); line-height: 1.6; }
+.confidence-text b { color: var(--accent); }
+
 @keyframes flash-price {
 0% { opacity: 1; }
 50% { opacity: 0.3; }
@@ -536,7 +742,6 @@ letter-spacing: 1px;
 }
 .flash { animation: flash-price 0.3s ease; }
 </style>
-
 </head>
 <body>
 
@@ -551,7 +756,6 @@ letter-spacing: 1px;
 </header>
 
 <div class="main">
-
   <div class="signal-bar" id="signal-bar">
     <div class="signal-top">
       <span class="signal-label">Master Signal · BTC/USDT · <span style="color:var(--accent);font-size:0.6rem;letter-spacing:2px;">1H</span></span>
@@ -588,192 +792,60 @@ letter-spacing: 1px;
 
   <div class="panel">
     <div class="panel-header">
-      <span class="panel-title">Multi-Timeframe Alignment</span>
-      <span class="panel-badge">1H · 4H</span>
-    </div>
-    <div style="padding:12px;display:flex;flex-direction:column;gap:10px;">
-      <div class="ind-row" style="gap:8px;">
-        <span class="ind-name" style="font-size:0.65rem;letter-spacing:1px;">1H Signal</span>
-        <span class="ind-val" id="mtf-1h-score">—</span>
-        <span class="ind-sig" id="mtf-1h-badge">—</span>
-      </div>
-      <div class="ind-row" style="gap:8px;">
-        <span class="ind-name" style="font-size:0.65rem;letter-spacing:1px;">4H Signal</span>
-        <span class="ind-val" id="mtf-4h-score">—</span>
-        <span class="ind-sig" id="mtf-4h-badge">—</span>
-      </div>
-      <div id="mtf-verdict" style="padding:10px 12px;border-radius:6px;background:rgba(0,0,0,0.2);border:1px solid var(--border);font-size:0.72rem;line-height:1.6;color:var(--text);">Aligning timeframes…</div>
-      <div class="score-track"><div class="score-fill" id="mtf-agree-fill" style="width:50%;background:var(--neutral);"></div></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header">
-      <span class="panel-title">Price Chart</span>
-      <span class="panel-badge">1h · BTCUSDT</span>
-    </div>
-    <div class="chart-wrap" id="tv-chart"></div>
-  </div>
-
-  <div class="stat-grid">
-    <div class="stat-card" style="--accent-line: var(--red);"><span class="stat-val" id="day-high">—</span><span class="stat-lbl">24h High</span></div>
-    <div class="stat-card" style="--accent-line: var(--green);"><span class="stat-val" id="day-low">—</span><span class="stat-lbl">24h Low</span></div>
-    <div class="stat-card" style="--accent-line: var(--accent);"><span class="stat-val" id="day-volume">—</span><span class="stat-lbl">24h Volume</span></div>
-    <div class="stat-card" style="--accent-line: var(--orange);"><span class="stat-val" id="day-pct">—</span><span class="stat-lbl">24h Change</span></div>
-  </div>
-
-  <div class="panel">
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('indicators')">Indicators</button>
-      <button class="tab" onclick="switchTab('levels')">Key Levels</button>
-      <button class="tab" onclick="switchTab('confidence')">Confidence</button>
-    </div>
-    <div id="tab-indicators" class="tab-content active"><div class="indicators-grid" id="indicators-grid"></div></div>
-    <div id="tab-levels" class="tab-content"><div class="levels-list" id="levels-list"></div></div>
-    <div id="tab-confidence" class="tab-content">
-      <div style="padding:14px;">
-        <div class="confidence-wrap">
-          <div class="ring-outer" id="conf-ring"><div class="ring-inner"><span class="ring-pct" id="conf-pct">—</span><span class="ring-lbl">Conf.</span></div></div>
-          <div class="confidence-text" id="conf-text">Computing signal confidence…</div>
-        </div>
-        <div id="regime-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header">
       <span class="panel-title">Risk Calculator</span>
       <span class="panel-badge">Position Sizing</span>
     </div>
     <div class="calc-wrap">
-      <div class="calc-row"><span class="calc-label">Account Size</span><input class="calc-input" id="c-account" type="number" value="10000"></div>
-      <div class="calc-row"><span class="calc-label">Risk %</span><input class="calc-input" id="c-risk" type="number" value="1" step="0.1"></div>
-      <div class="calc-row"><span class="calc-label">Entry Price</span><input class="calc-input" id="c-entry" type="number"></div>
-      <div class="calc-row"><span class="calc-label">Stop Loss</span><input class="calc-input" id="c-stop" type="number"></div>
-      <div class="calc-row"><span class="calc-label">Take Profit</span><input class="calc-input" id="c-tp" type="number"></div>
+      <div class="calc-row">
+        <span class="calc-label">Account Size</span>
+        <input class="calc-input" id="c-account" type="number" placeholder="10000" value="10000">
+        <span style="font-size:0.7rem;color:var(--muted);">USDT</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Risk %</span>
+        <input class="calc-input" id="c-risk" type="number" placeholder="1" value="1" step="0.1">
+        <span style="font-size:0.7rem;color:var(--muted);">%</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Entry Price</span>
+        <input class="calc-input" id="c-entry" type="number" placeholder="auto">
+        <span style="font-size:0.7rem;color:var(--muted);">USDT</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Stop Loss</span>
+        <input class="calc-input" id="c-stop" type="number" placeholder="price">
+        <span style="font-size:0.7rem;color:var(--muted);">USDT</span>
+      </div>
+      <div class="calc-row">
+        <span class="calc-label">Take Profit</span>
+        <input class="calc-input" id="c-tp" type="number" placeholder="price">
+        <span style="font-size:0.7rem;color:var(--muted);">USDT</span>
+      </div>
       <button class="calc-btn" onclick="calcPosition()">Calculate Position</button>
       <div class="calc-output" id="calc-output">
-        <div class="calc-out-row"><span class="calc-out-label">Risk Amount</span><span class="calc-out-val" id="o-risk-amt" style="color:var(--red);"></span></div>
-        <div class="calc-out-row"><span class="calc-out-label">Position Size</span><span class="calc-out-val" id="o-pos-size" style="color:var(--accent);"></span></div>
-        <div class="calc-out-row"><span class="calc-out-label">R:R Ratio</span><span class="calc-out-val" id="o-rr" style="color:var(--green);"></span></div>
+        <div class="calc-out-row">
+          <span class="calc-out-label">Risk Amount</span>
+          <span class="calc-out-val" id="o-risk-amt" style="color:var(--red);"></span>
+        </div>
+        <div class="calc-out-row">
+          <span class="calc-out-label">Position Size</span>
+          <span class="calc-out-val" id="o-pos-size" style="color:var(--accent);"></span>
+        </div>
+        <div class="calc-out-row">
+          <span class="calc-out-label">Position Value</span>
+          <span class="calc-out-val" id="o-pos-val"></span>
+        </div>
+        <div class="calc-out-row">
+          <span class="calc-out-label">R:R Ratio</span>
+          <span class="calc-out-val" id="o-rr" style="color:var(--green);"></span>
+        </div>
+        <div class="calc-out-row">
+          <span class="calc-out-label">Potential Profit</span>
+          <span class="calc-out-val" id="o-profit" style="color:var(--green);"></span>
+        </div>
       </div>
     </div>
   </div>
-
 </div>
-
-<footer>MaruProfit SMC · Real-time BTC/USDT</footer>
-
-<script src="https://s3.tradingview.com/tv.js"></script>
-<script>
-let lastPrice = 0;
-
-new TradingView.widget({
-  autosize: true, symbol: "BINANCE:BTCUSDT", interval: "60", theme: "dark", style: "1", locale: "en", container_id: "tv-chart"
-});
-
-async function fetchTicker() {
-  const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
-  return r.json();
-}
-
-async function fetchKlines(interval, limit) {
-  const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
-  return r.json();
-}
-
-function calcEMA(data, period) {
-  const k = 2 / (period + 1);
-  let ema = [data[0]];
-  for (let i = 1; i < data.length; i++) ema.push(data[i] * k + ema[i-1] * (1-k));
-  return ema;
-}
-
-function calcRSI(closes, period = 14) {
-  let gains = 0, losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const d = closes[i] - closes[i-1];
-    if (d > 0) gains += d; else losses -= d;
-  }
-  let avgG = gains / period, avgL = losses / period;
-  for (let i = period + 1; i < closes.length; i++) {
-    const d = closes[i] - closes[i-1];
-    avgG = (avgG * (period - 1) + Math.max(d, 0)) / period;
-    avgL = (avgL * (period - 1) + Math.max(-d, 0)) / period;
-  }
-  return 100 - (100 / (1 + (avgG / avgL)));
-}
-
-function analyzeMarket(kData) {
-  const closes = kData.map(k => parseFloat(k[4]));
-  const highs = kData.map(k => parseFloat(k[2]));
-  const lows = kData.map(k => parseFloat(k[3]));
-  const price = closes[closes.length-1];
-  const rsi = calcRSI(closes);
-  const e50 = calcEMA(closes, 50).pop();
-  
-  const signals = [
-    { name: 'RSI', val: rsi.toFixed(1), sig: rsi < 30 ? 'BUY' : rsi > 70 ? 'SELL' : 'NEUTRAL', reason: rsi < 30 ? 'Oversold' : rsi > 70 ? 'Overbought' : 'Neutral' },
-    { name: 'EMA 50', val: e50.toFixed(0), sig: price > e50 ? 'BUY' : 'SELL', reason: price > e50 ? 'Above' : 'Below' }
-  ];
-
-  const buyCount = signals.filter(s => s.sig === 'BUY').length;
-  const sellCount = signals.filter(s => s.sig === 'SELL').length;
-  const score = buyCount / signals.length;
-  let label = score > 0.6 ? 'BUY' : score < 0.4 ? 'SELL' : 'NEUTRAL';
-
-  return { label, buyCount, sellCount, score, signals, price, rsi, resistance: Math.max(...highs.slice(-20)), support: Math.min(...lows.slice(-20)) };
-}
-
-function updateTickerUI(data) {
-  const price = parseFloat(data.lastPrice);
-  const el = document.getElementById('btc-price');
-  el.textContent = '$' + price.toLocaleString();
-  el.className = price > lastPrice ? 'up flash' : 'down flash';
-  lastPrice = price;
-  document.getElementById('day-high').textContent = '$' + parseFloat(data.highPrice).toLocaleString();
-  document.getElementById('day-low').textContent = '$' + parseFloat(data.lowPrice).toLocaleString();
-  document.getElementById('price-change').textContent = data.priceChangePercent + '%';
-}
-
-function updateSignalUI(a) {
-  const badge = document.getElementById('signal-badge');
-  badge.textContent = a.label;
-  badge.className = 'signal-badge ' + a.label;
-  document.getElementById('score-fill').style.width = (a.score * 100) + '%';
-  document.getElementById('sig-buy-count').textContent = a.buyCount;
-  document.getElementById('sig-sell-count').textContent = a.sellCount;
-  document.getElementById('indicators-grid').innerHTML = a.signals.map(s => `<div class="ind-row"><span>${s.name}</span><span>${s.val}</span><span class="ind-sig sig-${s.sig.toLowerCase()}">${s.reason}</span></div>`).join('');
-  document.getElementById('c-entry').placeholder = a.price.toFixed(2);
-}
-
-async function update() {
-  const [ticker, k1h, k4h] = await Promise.all([fetchTicker(), fetchKlines('1h', 100), fetchKlines('4h', 100)]);
-  updateTickerUI(ticker);
-  const a1h = analyzeMarket(k1h);
-  updateSignalUI(a1h);
-}
-
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase().includes(name)));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id.includes(name)));
-}
-
-function calcPosition() {
-  const acc = parseFloat(document.getElementById('c-account').value);
-  const risk = parseFloat(document.getElementById('c-risk').value) / 100;
-  const entry = parseFloat(document.getElementById('c-entry').value) || lastPrice;
-  const stop = parseFloat(document.getElementById('c-stop').value);
-  if (!stop) return alert('Enter SL');
-  const size = (acc * risk) / Math.abs(entry - stop);
-  document.getElementById('calc-output').classList.add('visible');
-  document.getElementById('o-risk-amt').textContent = '$' + (acc * risk).toFixed(2);
-  document.getElementById('o-pos-size').textContent = size.toFixed(4) + ' BTC';
-}
-
-update();
-setInterval(update, 30000);
-</script>
 </body>
 </html>
