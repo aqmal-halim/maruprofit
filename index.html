@@ -7,141 +7,124 @@
     <style>
         :root {
             --bg: #0d1117;
-            --card-bg: #161b22;
+            --card: #161b22;
             --border: #30363d;
             --accent: #58a6ff;
             --green: #3fb950;
+            --red: #f85149;
             --orange: #f26722;
         }
         body {
             background-color: var(--bg);
             color: #c9d1d9;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: sans-serif;
             margin: 0;
-            padding: 10px;
-            line-height: 1.5;
+            padding: 5px;
         }
         header {
-            padding: 10px 5px;
+            padding: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border);
         }
-        .container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            margin-top: 15px;
-        }
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px;
-        }
-        .chart-container {
-            height: 450px;
-            width: 100%;
-        }
-        h2 { color: var(--accent); font-size: 0.9rem; text-transform: uppercase; margin-top: 0; letter-spacing: 1px; }
+        .price-live { font-weight: bold; color: var(--green); }
         
-        /* Order Block Section Styling */
-        .key-levels {
+        .container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        
+        /* Fixed Chart Visibility */
+        .chart-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            height: 60vh; /* Takes 60% of screen height */
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Order Block & Levels Section */
+        .levels-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            font-size: 0.8rem;
+            gap: 8px;
         }
-        .level-box {
-            background: #0d1117;
-            padding: 8px;
-            border-radius: 6px;
-            border-left: 3px solid var(--orange);
+        .level-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
         }
-        .level-box.green { border-left-color: var(--green); }
-
-        @media (min-width: 900px) {
-            .container { display: grid; grid-template-columns: 2fr 1fr; }
-        }
+        .val { display: block; font-size: 1.2rem; font-weight: bold; margin-top: 5px; }
+        .label { font-size: 0.7rem; text-transform: uppercase; color: #8b949e; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="font-size: 1.2rem; margin: 0;">MaruProfit <span style="color: var(--green); font-size: 0.7rem;">● SMC FLOW</span></h1>
+    <div style="font-size: 1.1rem; font-weight: bold;">MaruProfit <span style="color: var(--accent);">SMC</span></div>
+    <div class="price-live" id="btc-price">Fetching...</div>
 </header>
 
 <div class="container">
-    <div class="card">
-        <h2>Live Scalp Chart</h2>
-        <div class="chart-container" id="tv-chart"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-        <script type="text/javascript">
-        new TradingView.widget({
-            "width": "100%",
-            "height": "100%",
-            "symbol": "BINANCE:BTCUSDT",
-            "interval": "1",
-            "timezone": "Etc/UTC",
-            "theme": "dark",
-            "style": "1",
-            "locale": "en",
-            "enable_publishing": false,
-            "container_id": "tv-chart",
-            "studies": ["RSI@tv-basicstudies", "MACD@tv-basicstudies"]
-        });
-        </script>
+    <div class="chart-card" id="tv-chart"></div>
 
-        <h2 style="margin-top: 20px;">SMC Order Block Intelligence</h2>
-        <div class="key-levels">
-            <div class="level-box">
-                <strong style="color: var(--orange);">Bearish OB</strong><br>
-                Look for Last Buying Candle before a sharp drop.
-            </div>
-            <div class="level-box green">
-                <strong style="color: var(--green);">Bullish OB</strong><br>
-                Look for Last Selling Candle before a sharp pump.
-            </div>
-            <div class="level-box" style="grid-column: span 2; border-left-color: var(--accent);">
-                <strong>Key Levels:</strong> Focus on Previous Day High/Low (PDH/PDL) and Monday High/Low for liquidity sweeps.
-            </div>
+    <div class="levels-grid">
+        <div class="level-card" style="border-top: 3px solid var(--red);">
+            <span class="label">24h High (Key Resistance)</span>
+            <span class="val" id="day-high">---</span>
         </div>
-    </div>
-
-    <div class="column">
-        <div class="card">
-            <h2>Technical Gauge</h2>
-            <div class="tradingview-widget-container">
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-                {
-                    "interval": "1m",
-                    "width": "100%",
-                    "height": "320",
-                    "symbol": "BINANCE:BTCUSDT",
-                    "showIntervalTabs": true,
-                    "colorTheme": "dark"
-                }
-                </script>
-            </div>
+        <div class="level-card" style="border-top: 3px solid var(--green);">
+            <span class="label">24h Low (Key Support)</span>
+            <span class="val" id="day-low">---</span>
         </div>
-
-        <div class="card" style="margin-top: 15px;">
-            <h2>Market Pulse</h2>
-            <div class="tradingview-widget-container">
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
-                {
-                    "feedMode": "symbol",
-                    "symbol": "BINANCE:BTCUSDT",
-                    "colorTheme": "dark",
-                    "width": "100%",
-                    "height": "400"
-                }
-                </script>
-            </div>
+        <div class="level-card" style="grid-column: span 2; border-left: 4px solid var(--orange);">
+            <span class="label">Potential Bullish OB Zone (Manual Validation)</span>
+            <span class="val" id="ob-zone" style="color: var(--orange);">Calculating...</span>
         </div>
     </div>
 </div>
+
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    // 1. Initialize Chart with optimized mobile height
+    new TradingView.widget({
+        "autosize": true,
+        "symbol": "BINANCE:BTCUSDT",
+        "interval": "1",
+        "timezone": "Etc/UTC",
+        "theme": "dark",
+        "style": "1",
+        "locale": "en",
+        "container_id": "tv-chart",
+        "studies": ["RSI@tv-basicstudies", "VWAP@tv-basicstudies"]
+    });
+
+    // 2. Fetch Live Binance Data for Levels
+    async function updateLevels() {
+        try {
+            const res = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+            const data = await res.json();
+            
+            const price = parseFloat(data.lastPrice).toFixed(2);
+            const high = parseFloat(data.highPrice).toFixed(2);
+            const low = parseFloat(data.lowPrice).toFixed(2);
+
+            document.getElementById('btc-price').innerText = `$${price}`;
+            document.getElementById('day-high').innerText = `$${high}`;
+            document.getElementById('day-low').innerText = `$${low}`;
+
+            // Simplified logic: Bullish OB often forms just above the recent low
+            const obStart = (low * 1.001).toFixed(2);
+            const obEnd = (low * 1.003).toFixed(2);
+            document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
+
+        } catch (e) { console.error("Data error", e); }
+    }
+
+    setInterval(updateLevels, 3000);
+    updateLevels();
+</script>
 
 </body>
 </html>
