@@ -14,51 +14,18 @@
             --red: #f85149;
             --orange: #f26722;
         }
-        body {
-            background-color: var(--bg);
-            color: #c9d1d9;
-            font-family: sans-serif;
-            margin: 0;
-            padding: 8px;
-        }
-        header {
-            padding: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            background: var(--bg);
-            z-index: 100;
-        }
+        body { background-color: var(--bg); color: #c9d1d9; font-family: sans-serif; margin: 0; padding: 8px; }
+        header { padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 100; }
         .price-live { font-weight: bold; color: var(--green); }
         .container { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-        
-        .card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px;
-            overflow: hidden;
-        }
-
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow: hidden; }
         .chart-height { height: 70vh; width: 100%; }
-        .gauge-height { height: 320px; width: 100%; }
-        .news-height { height: 600px; width: 100%; border: none; }
-
         .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .level-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-        }
+        .level-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
         .val { display: block; font-size: 1.1rem; font-weight: bold; margin-top: 5px; }
         .label { font-size: 0.65rem; text-transform: uppercase; color: #8b949e; letter-spacing: 0.5px; }
         h2 { font-size: 0.9rem; color: var(--accent); margin: 0 0 10px 0; text-transform: uppercase; }
-        .timestamp { font-size: 0.6rem; color: #8b949e; margin-bottom: 10px; display: block; }
+        .news-height { height: 500px; width: 100%; border: none; }
     </style>
 </head>
 <body>
@@ -80,34 +47,10 @@
             <span class="label">24h Low</span>
             <span class="val" id="day-low">---</span>
         </div>
-        <div class="level-card" style="grid-column: span 2; border-left: 4px solid var(--orange);">
-            <span class="label">Bullish OB Zone</span>
-            <span class="val" id="ob-zone" style="color: var(--orange);">---</span>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Technical Sentiment</h2>
-        <div class="gauge-height">
-            <div class="tradingview-widget-container">
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-                {
-                    "interval": "1m",
-                    "width": "100%",
-                    "height": "100%",
-                    "symbol": "BINANCE:BTCUSDT",
-                    "showIntervalTabs": true,
-                    "colorTheme": "dark",
-                    "locale": "en"
-                }
-                </script>
-            </div>
-        </div>
     </div>
 
     <div class="card">
         <h2>BTC Live News Wire</h2>
-        <span class="timestamp">Direct Ticker-Filtered Feed</span>
         <div class="news-height">
             <div class="tradingview-widget-container">
                 <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-timeline.js" async>
@@ -129,6 +72,9 @@
 
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
+    // Initialize Chart with Custom Indicator Placeholder
+    // Note: To see your EXACT Pine Script, you would normally host it on TradingView and call the script ID.
+    // Here, we load the TV widget and apply the technicals you defined.
     new TradingView.widget({
         "autosize": true,
         "symbol": "BINANCE:BTCUSDT",
@@ -138,7 +84,28 @@
         "style": "1",
         "locale": "en",
         "container_id": "tv-chart",
-        "studies": ["RSI@tv-basicstudies", "VWAP@tv-basicstudies", "MACD@tv-basicstudies"]
+        "hide_side_toolbar": false,
+        "allow_symbol_change": true,
+        "details": true,
+        "hotlist": true,
+        "calendar": true,
+        // Replicating your Wave 26 Logic using Standard TV components that match your Pine Script
+        "studies": [
+            {
+                "id": "MASimple@tv-basicstudies",
+                "title": "Wave Filter (50)",
+                "inputs": { "length": 50 }
+            },
+            {
+                "id": "MACD@tv-basicstudies",
+                "title": "Wave 26 MACD",
+                "inputs": {
+                    "fast_length": 12,
+                    "slow_length": 26,
+                    "signal_length": 9
+                }
+            }
+        ]
     });
 
     async function updateDashboard() {
@@ -148,10 +115,7 @@
             document.getElementById('btc-price').innerText = `$${parseFloat(data.lastPrice).toFixed(2)}`;
             document.getElementById('day-high').innerText = `$${parseFloat(data.highPrice).toFixed(2)}`;
             document.getElementById('day-low').innerText = `$${parseFloat(data.lowPrice).toFixed(2)}`;
-            const obStart = (parseFloat(data.lowPrice) * 1.001).toFixed(2);
-            const obEnd = (parseFloat(data.lowPrice) * 1.003).toFixed(2);
-            document.getElementById('ob-zone').innerText = `${obStart} - ${obEnd}`;
-        } catch (e) { console.error("Price fetch error", e); }
+        } catch (e) { console.error("Price error", e); }
     }
 
     setInterval(updateDashboard, 3000);
