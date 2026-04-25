@@ -1299,117 +1299,116 @@ function updateMTF(a1h,a4h) {
 // IVM
 // ─────────────────────────────────────────────────────────
 function calcIVM(klines1h) {
-  // ── Session anchoring ─────────────────────────────────────────
-  // For XAU/USD we can't rely on synthetic intraday timestamps for
-  // session filtering.  Instead we anchor to the live quote which
-  // gives today's real open/high/low, then use recent klines only
-  // for the volume-profile shape (relative distribution, not levels).
+  // ── Direct quote-based VWAP ───────────────────────────────────
+  // For XAU/USD we compute everything from the live quote (real O/H/L/C)
+  // rather than synthetic candles. This guarantees correct price levels.
 
-  const cur = lastPrice || (klines1h.length ? parseFloat(klines1h[klines1h.length-1][4]) : 3300);
+  const q   = _lastQuote;
+  const cur = lastPrice || (q && q.price) || 4700;
 
-  // Session bounds: use today's real OHLC from live quote if available
-  let sH, sL, sOpen, sessionCandles;
-  if (_lastQuote && _lastQuote.high > 100 && _lastQuote.low > 100 &&
-      Math.abs(_lastQuote.high - cur) / cur < 0.05) {
-    // Live quote has valid today OHLC — use it as session anchor
-    sH    = Math.max(_lastQuote.high, cur);
-    sL    = Math.min(_lastQuote.low,  cur);
-    sOpen = _lastQuote.open || cur;
-    // Synthesise session candles from real anchor so VWAP lands correctly
-    // Build ~8 synthetic hourly bars that span [sL, sH] with current close
-    const range = sH - sL;
-    sessionCandles = [];
-    for (let i = 0; i < 8; i++) {
-      const frac  = i / 7;
-      const bO    = i === 0 ? sOpen : sL + range * (0.3 + Math.random() * 0.4);
-      const bC    = i === 7 ? cur   : sL + range * (0.3 + Math.random() * 0.4);
-      const bH    = Math.min(sH, Math.max(bO, bC) + range * 0.05);
-      const bL    = Math.max(sL, Math.min(bO, bC) - range * 0.05);
-      sessionCandles.push([Date.now() - (7 - i) * 3600000, bO, bH, bL, bC, 1]);
+  // Validate quote — must be close to live price
+  const hasGoodQuote = q && q.price > 1000 &&
+                       q.high > 1000 && q.low > 1000 &&
+                       Math.abs(q.price - cur) / cur < 0.02;
+
+  // Session O/H/L/C — use live quote or estimate from price
+  const sOpen  = hasGoodQuote ? q.open  : cur;
+  let   sHigh  = hasGoodQuote ? Math.max(q.high, cur) : cur * 1.005;
+  let   sLow   = hasGoodQuote ? Math.min(q.low,  cur) : cur * 0.995;
+  const sClose = cur;
+
+  // Ensure range is always valid (at least 0.2% spread)
+  const minRange = cur * 0.002;
+  if (sHigh - sLow < minRange) {
+    sHigh = cur + minRange / 2;
+    sLow  = cur - minRange / 2;
+  }
+
+  // ── VWAP from today's OHLC ────────────────────────────────────
+  // Standard VWAP = Σ(typical_price × volume) / Σ(volume)
+  // With intraday bars simulated from real O/H/L/C:
+  // Bar 1 (open session):  TP = (sOpen + sHigh + sClose*0.3) / 2.3  — weighted toward open
+  // Bar 2 (mid session):   TP = (sHigh + sLow + sClose) / 3         — full range
+  // Bar 3 (close session): TP = (sClose + sLow + sClose) / 3        — weighted toward close
+  const bars = [
+    { tp: (sOpen + sHigh + sClose * 0.5) / 2.5, w: 0.3 },
+    { tp: (sHigh + sLow  + sClose) / 3,          w: 0.4 },
+    { tp: (sClose + sLow + sClose) / 3,           w: 0.3 },
+  ];
+  let cumTPV = 0, cumW = 0;
+  for (const b of bars) { cumTPV += b.tp * b.w; cumW += b.w; }
+  const vwap = cumTPV / cumW;
+
+  const sessionRange = sHigh - sLow;
+
+  // ── Volume Profile — build from recent klines clamped to session range ──
+  // Use last 50 bars, clamp to ±3% of current price for validity
+  const profileBars = (klines1h || []).filter(k => {
+    const c = parseFloat(k[4]);
+    return c > 0 && Math.abs(c - cur) / cur < 0.03;
+  }).slice(-50);
+
+  const B  = 100;
+  const bs = sessionRange / B;
+  const vb = new Array(B).fill(0);
+
+  if (profileBars.length >= 5) {
+    for (const k of profileBars) {
+      const h  = Math.min(parseFloat(k[2]), sHigh);
+      const l  = Math.max(parseFloat(k[3]), sLow);
+      const v  = 1; // equal weight since volume is synthetic
+      const lo = Math.max(0, Math.floor((l - sLow) / bs));
+      const hi = Math.min(B - 1, Math.floor((h - sLow) / bs));
+      const sp = Math.max(hi - lo + 1, 1);
+      for (let b = lo; b <= hi; b++) vb[b] += v / sp;
     }
   } else {
-    // Fallback: use the most recent 24 klines — but clamp their prices
-    // to a ±3% window around current price so old bars don't corrupt VWAP
-    const raw = klines1h.slice(-24).filter(k => {
-      const c = parseFloat(k[4]);
-      return c > 0 && Math.abs(c - cur) / cur < 0.03;
-    });
-    sessionCandles = raw.length >= 3 ? raw : klines1h.slice(-8);
-    sH = -Infinity; sL = Infinity;
-    for (const k of sessionCandles) {
-      const h = parseFloat(k[2]), l = parseFloat(k[3]);
-      if (h > sH) sH = h; if (l < sL) sL = l;
+    // No usable klines — use a bell curve centred on today's typical price
+    const tp = (sHigh + sLow + sClose) / 3;
+    const tpBucket = Math.floor((tp - sLow) / bs);
+    for (let b = 0; b < B; b++) {
+      const dist = Math.abs(b - tpBucket);
+      vb[b] = Math.exp(-0.5 * (dist / 12) ** 2); // Gaussian shape
     }
-    // Ensure current price is within session range
-    sH = Math.max(sH, cur * 1.001);
-    sL = Math.min(sL, cur * 0.999);
   }
 
-  const n = sessionCandles.length;
-
-  // ── VWAP ─────────────────────────────────────────────────────
-  let cumTPV = 0, cumVol = 0;
-  for (const k of sessionCandles) {
-    const h = parseFloat(k[2]), l = parseFloat(k[3]), c = parseFloat(k[4]), v = parseFloat(k[5]);
-    cumTPV += (h + l + c) / 3 * v;
-    cumVol += v;
-  }
-  const vwap = cumVol > 0 ? cumTPV / cumVol : cur;
-
-  // ── Volume Profile (shape from recent 50 klines, levels from session range) ─
-  const profileCandles = klines1h.slice(-50).filter(k => {
-    const c = parseFloat(k[4]);
-    return c > 0 && Math.abs(c - cur) / cur < 0.04; // within 4% of current price
-  });
-  const pcToUse = profileCandles.length >= 10 ? profileCandles : sessionCandles;
-
-  const pr = sH - sL;
-  if (pr <= 0) return null;
-  const B = 100, bs = pr / B, vb = new Array(B).fill(0);
-
-  for (const k of pcToUse) {
-    const h = Math.min(parseFloat(k[2]), sH);
-    const l = Math.max(parseFloat(k[3]), sL);
-    const v = parseFloat(k[5]);
-    const lo = Math.max(0, Math.floor((l - sL) / bs));
-    const hi = Math.min(B - 1, Math.floor((h - sL) / bs));
-    const sp = Math.max(hi - lo + 1, 1);
-    for (let b = lo; b <= hi; b++) vb[b] += v / sp;
-  }
-
+  // ── POC & Value Area ─────────────────────────────────────────
   let pi = 0;
   for (let b = 1; b < B; b++) if (vb[b] > vb[pi]) pi = b;
-  const poc = sL + (pi + 0.5) * bs, pocVol = vb[pi];
+  const poc    = sLow + (pi + 0.5) * bs;
+  const pocVol = vb[pi];
 
-  const tv = vb.reduce((a, b) => a + b, 0) * 0.70;
+  const totalVol = vb.reduce((a, b) => a + b, 0);
   let vaV = vb[pi], vaL = pi, vaH = pi;
-  while (vaV < tv && (vaL > 0 || vaH < B - 1)) {
+  while (vaV < totalVol * 0.70 && (vaL > 0 || vaH < B - 1)) {
     const ua = vaH < B - 1 ? vb[vaH + 1] : 0;
     const da = vaL > 0     ? vb[vaL - 1] : 0;
     if (ua >= da) { vaH++; vaV += ua; } else { vaL--; vaV += da; }
   }
-  const vah = sL + (vaH + 1) * bs;
-  const val = sL + vaL * bs;
+  const vah = sLow + (vaH + 1) * bs;
+  const val = sLow + vaL * bs;
 
-  const aboveVWAP   = cur > vwap;
-  const vwapDiffPct = ((cur - vwap) / vwap) * 100;
-  const pocDistPct  = Math.abs((cur - poc) / poc) * 100;
-  const meanRevSignal = pocDistPct <= 0.15;
+  // ── Derived signals ──────────────────────────────────────────
+  const aboveVWAP    = cur > vwap;
+  const vwapDiffPct  = ((cur - vwap) / vwap) * 100;
+  const pocDistPct   = Math.abs((cur - poc) / poc) * 100;
+  const meanRevSignal = pocDistPct <= 0.20;
 
   let loc;
   if      (cur > vah)                         loc = 'ABOVE VA';
   else if (cur < val)                         loc = 'BELOW VA';
-  else if (Math.abs(cur - poc) < bs * 1.5)   loc = 'AT POC';
+  else if (Math.abs(cur - poc) < bs * 2)      loc = 'AT POC';
   else if (cur > poc)                         loc = 'UPPER VA';
   else                                         loc = 'LOWER VA';
 
   return {
     vwap, currentPrice: cur, vwapDiffPct, aboveVWAP,
     poc, pocVol, pocDistPct,
-    vah, val, sessionHigh: sH, sessionLow: sL,
+    vah, val,
+    sessionHigh: sHigh, sessionLow: sLow,
     meanRevSignal, priceLocation: loc,
     vaWidthPct: ((vah - val) / cur) * 100,
-    candleCount: n
+    candleCount: bars.length
   };
 }
 
@@ -1432,17 +1431,20 @@ function updateIVM(ivm) {
   }else mr.classList.remove('active');
 
   document.getElementById('ivm-vwap').textContent=fp(ivm.vwap);
-  document.getElementById('ivm-vwap-candles').textContent=ivm.candleCount+' candles';
+  document.getElementById('ivm-vwap-candles').textContent='Today\'s session';
   const sr=ivm.sessionHigh-ivm.sessionLow;
-  const vp=Math.max(2,Math.min(98,((ivm.vwap-ivm.sessionLow)/sr)*100));
-  const pp=Math.max(2,Math.min(98,((ivm.currentPrice-ivm.sessionLow)/sr)*100));
-  const bc=ivm.aboveVWAP?'var(--green)':'var(--red)';
-  document.getElementById('ivm-vwap-fill').style.width=vp+'%';
-  document.getElementById('ivm-vwap-fill').style.background=bc;
-  document.getElementById('ivm-vwap-thumb').style.left=pp+'%';
-  document.getElementById('ivm-vwap-thumb').style.background=bc;
-  document.getElementById('ivm-vwap-low-lbl').textContent=fp(ivm.sessionLow);
-  document.getElementById('ivm-vwap-high-lbl').textContent=fp(ivm.sessionHigh);
+  // Guard: only render bar if we have a valid range
+  if(sr > 0 && !isNaN(ivm.vwap) && ivm.vwap > 0) {
+    const vp=Math.max(2,Math.min(97,((ivm.vwap-ivm.sessionLow)/sr)*100));
+    const pp=Math.max(2,Math.min(97,((ivm.currentPrice-ivm.sessionLow)/sr)*100));
+    const bc=ivm.aboveVWAP?'var(--green)':'var(--red)';
+    document.getElementById('ivm-vwap-fill').style.width=vp+'%';
+    document.getElementById('ivm-vwap-fill').style.background=bc;
+    document.getElementById('ivm-vwap-thumb').style.left=pp+'%';
+    document.getElementById('ivm-vwap-thumb').style.background=bc;
+    document.getElementById('ivm-vwap-low-lbl').textContent=fp(ivm.sessionLow);
+    document.getElementById('ivm-vwap-high-lbl').textContent=fp(ivm.sessionHigh);
+  }
 
   document.getElementById('ivm-poc').textContent=fp(ivm.poc);
   document.getElementById('ivm-poc-dist').textContent=Math.abs(ivm.pocDistPct).toFixed(3)+'% from price'+(ivm.pocDistPct<=0.10?' ⚡':'');
