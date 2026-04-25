@@ -1299,85 +1299,79 @@ function updateMTF(a1h,a4h) {
 // IVM
 // ─────────────────────────────────────────────────────────
 function calcIVM(klines1h) {
-  // ── Direct quote-based VWAP ───────────────────────────────────
-  // For XAU/USD we compute everything from the live quote (real O/H/L/C)
-  // rather than synthetic candles. This guarantees correct price levels.
-
+  // ── Session data ──────────────────────────────────────────────
   const q   = _lastQuote;
   const cur = lastPrice || (q && q.price) || 4700;
 
-  // Validate quote — must be close to live price
-  const hasGoodQuote = q && q.price > 1000 &&
-                       q.high > 1000 && q.low > 1000 &&
-                       Math.abs(q.price - cur) / cur < 0.02;
+  const hasGoodQuote = q && q.price > 1000 && q.high > 1000 && q.low > 1000;
 
-  // Session O/H/L/C — use live quote or estimate from price
-  const sOpen  = hasGoodQuote ? q.open  : cur;
-  let   sHigh  = hasGoodQuote ? Math.max(q.high, cur) : cur * 1.005;
-  let   sLow   = hasGoodQuote ? Math.min(q.low,  cur) : cur * 0.995;
+  // Real daily O/H/L from live quote
+  const sOpen  = hasGoodQuote ? (q.open  || cur)  : cur;
+  const rawHigh = hasGoodQuote ? q.high : cur;
+  const rawLow  = hasGoodQuote ? q.low  : cur;
+
+  // Gold daily range is typically $15-60. Enforce a realistic minimum of 0.4%
+  // (~$19 at $4700) so the value area is always meaningful.
+  const minHalfRange = cur * 0.004;
+  let sHigh = Math.max(rawHigh, cur + minHalfRange * 0.3);
+  let sLow  = Math.min(rawLow,  cur - minHalfRange * 0.7);
+
+  // Ensure current price is always within session range
+  sHigh = Math.max(sHigh, cur + 1);
+  sLow  = Math.min(sLow,  cur - 1);
+
   const sClose = cur;
-
-  // Ensure range is always valid (at least 0.2% spread)
-  const minRange = cur * 0.002;
-  if (sHigh - sLow < minRange) {
-    sHigh = cur + minRange / 2;
-    sLow  = cur - minRange / 2;
-  }
-
-  // ── VWAP from today's OHLC ────────────────────────────────────
-  // Standard VWAP = Σ(typical_price × volume) / Σ(volume)
-  // With intraday bars simulated from real O/H/L/C:
-  // Bar 1 (open session):  TP = (sOpen + sHigh + sClose*0.3) / 2.3  — weighted toward open
-  // Bar 2 (mid session):   TP = (sHigh + sLow + sClose) / 3         — full range
-  // Bar 3 (close session): TP = (sClose + sLow + sClose) / 3        — weighted toward close
-  const bars = [
-    { tp: (sOpen + sHigh + sClose * 0.5) / 2.5, w: 0.3 },
-    { tp: (sHigh + sLow  + sClose) / 3,          w: 0.4 },
-    { tp: (sClose + sLow + sClose) / 3,           w: 0.3 },
-  ];
-  let cumTPV = 0, cumW = 0;
-  for (const b of bars) { cumTPV += b.tp * b.w; cumW += b.w; }
-  const vwap = cumTPV / cumW;
-
   const sessionRange = sHigh - sLow;
 
-  // ── Volume Profile — build from recent klines clamped to session range ──
-  // Use last 50 bars, clamp to ±3% of current price for validity
+  // ── VWAP ─────────────────────────────────────────────────────
+  // Weighted typical price across 3 time-of-day segments
+  // Using real O/H/L anchors for accuracy
+  const tp1 = (sOpen  + sHigh + (sOpen + sClose) / 2) / 3;  // morning
+  const tp2 = (sHigh  + sLow  + sClose) / 3;                  // midday (full range)
+  const tp3 = (sClose + sLow  + sClose) / 3;                  // afternoon
+  const vwap = tp1 * 0.30 + tp2 * 0.45 + tp3 * 0.25;
+
+  // ── Volume Profile ───────────────────────────────────────────
+  // Use anchored klines within today's real H/L range for profile shape.
+  // These are already price-correct from buildAnchoredCandles().
   const profileBars = (klines1h || []).filter(k => {
     const c = parseFloat(k[4]);
-    return c > 0 && Math.abs(c - cur) / cur < 0.03;
-  }).slice(-50);
+    return c > 0 && c >= sLow * 0.998 && c <= sHigh * 1.002;
+  }).slice(-60);
 
   const B  = 100;
   const bs = sessionRange / B;
   const vb = new Array(B).fill(0);
 
-  if (profileBars.length >= 5) {
+  if (profileBars.length >= 8) {
+    // Use candle H/L ranges weighted by bar size (larger range = more activity)
     for (const k of profileBars) {
       const h  = Math.min(parseFloat(k[2]), sHigh);
       const l  = Math.max(parseFloat(k[3]), sLow);
-      const v  = 1; // equal weight since volume is synthetic
-      const lo = Math.max(0, Math.floor((l - sLow) / bs));
+      if (h < l || isNaN(h) || isNaN(l)) continue;
+      const barSize = (h - l) || bs;
+      const lo = Math.max(0,     Math.floor((l - sLow) / bs));
       const hi = Math.min(B - 1, Math.floor((h - sLow) / bs));
       const sp = Math.max(hi - lo + 1, 1);
-      for (let b = lo; b <= hi; b++) vb[b] += v / sp;
+      for (let b = lo; b <= hi; b++) vb[b] += barSize / sp;
     }
   } else {
-    // No usable klines — use a bell curve centred on today's typical price
-    const tp = (sHigh + sLow + sClose) / 3;
-    const tpBucket = Math.floor((tp - sLow) / bs);
+    // Gaussian fallback centred on typical price, spread = 20% of daily range
+    const tp     = (sHigh + sLow + sClose) / 3;
+    const centre = Math.floor((tp - sLow) / bs);
+    const sigma  = B * 0.18; // 18% of range = realistic gold value area width
     for (let b = 0; b < B; b++) {
-      const dist = Math.abs(b - tpBucket);
-      vb[b] = Math.exp(-0.5 * (dist / 12) ** 2); // Gaussian shape
+      vb[b] = Math.exp(-0.5 * ((b - centre) / sigma) ** 2);
     }
   }
 
-  // ── POC & Value Area ─────────────────────────────────────────
+  // ── POC ──────────────────────────────────────────────────────
   let pi = 0;
   for (let b = 1; b < B; b++) if (vb[b] > vb[pi]) pi = b;
   const poc    = sLow + (pi + 0.5) * bs;
   const pocVol = vb[pi];
 
+  // ── Value Area (70%) ─────────────────────────────────────────
   const totalVol = vb.reduce((a, b) => a + b, 0);
   let vaV = vb[pi], vaL = pi, vaH = pi;
   while (vaV < totalVol * 0.70 && (vaL > 0 || vaH < B - 1)) {
@@ -1388,18 +1382,18 @@ function calcIVM(klines1h) {
   const vah = sLow + (vaH + 1) * bs;
   const val = sLow + vaL * bs;
 
-  // ── Derived signals ──────────────────────────────────────────
+  // ── Signals ───────────────────────────────────────────────────
   const aboveVWAP    = cur > vwap;
   const vwapDiffPct  = ((cur - vwap) / vwap) * 100;
   const pocDistPct   = Math.abs((cur - poc) / poc) * 100;
-  const meanRevSignal = pocDistPct <= 0.20;
+  const meanRevSignal = pocDistPct <= 0.15;
 
   let loc;
-  if      (cur > vah)                         loc = 'ABOVE VA';
-  else if (cur < val)                         loc = 'BELOW VA';
-  else if (Math.abs(cur - poc) < bs * 2)      loc = 'AT POC';
-  else if (cur > poc)                         loc = 'UPPER VA';
-  else                                         loc = 'LOWER VA';
+  if      (cur > vah)                       loc = 'ABOVE VA';
+  else if (cur < val)                       loc = 'BELOW VA';
+  else if (Math.abs(cur - poc) < bs * 2.5) loc = 'AT POC';
+  else if (cur > poc)                       loc = 'UPPER VA';
+  else                                       loc = 'LOWER VA';
 
   return {
     vwap, currentPrice: cur, vwapDiffPct, aboveVWAP,
@@ -1408,7 +1402,7 @@ function calcIVM(klines1h) {
     sessionHigh: sHigh, sessionLow: sLow,
     meanRevSignal, priceLocation: loc,
     vaWidthPct: ((vah - val) / cur) * 100,
-    candleCount: bars.length
+    candleCount: profileBars.length || B
   };
 }
 
