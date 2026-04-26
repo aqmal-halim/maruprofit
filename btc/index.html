@@ -30,6 +30,11 @@
   --neutral: #90a4ae;
   --sell: #ff6e6e;
   --strong-sell: #ff3d5a;
+
+  /* Session color tokens */
+  --session-asian:  #c8a84b;
+  --session-london: #a78bfa;
+  --session-ny:     #38bdf8;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1094,6 +1099,189 @@ footer {
   animation: entry-flash 4s ease forwards;
   pointer-events: none;
 }
+
+/* ══════════════════════════════════════════════
+   SESSION HIGH / LOW / POC PANEL
+   ══════════════════════════════════════════════ */
+.sessions-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Each session block */
+.session-block {
+  position: relative;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.session-block:last-child { border-bottom: none; }
+
+/* Left accent stripe */
+.session-block::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--s-color);
+}
+
+/* Row 1: name + status badge */
+.session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.session-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--s-color);
+}
+.session-time {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--muted);
+}
+.session-status {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 4px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.sstat-live {
+  background: rgba(0,230,118,0.1);
+  color: var(--green);
+  border: 1px solid rgba(0,230,118,0.35);
+  animation: sess-live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes sess-live-pulse {
+  0%,100% { box-shadow: none; }
+  50% { box-shadow: 0 0 8px rgba(0,230,118,0.3); }
+}
+.sstat-closed {
+  background: rgba(144,164,174,0.07);
+  color: var(--muted);
+  border: 1px solid var(--border2);
+}
+.sstat-upcoming {
+  background: rgba(255,145,0,0.08);
+  color: var(--orange);
+  border: 1px solid rgba(255,145,0,0.25);
+}
+
+/* Row 2: HL + POC values */
+.session-values {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr 1px 1fr 1px 1fr;
+  gap: 0;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.session-divider-v {
+  background: var(--border);
+  width: 1px;
+}
+.session-val-cell {
+  padding: 8px 6px;
+  text-align: center;
+}
+.session-val-lbl {
+  display: block;
+  font-size: 0.52rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.session-val-price {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.session-val-dist {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.52rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Range strip */
+.session-range-wrap {
+  position: relative;
+  height: 20px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.session-range-fill {
+  position: absolute;
+  top: 0; bottom: 0;
+  opacity: 0.18;
+  transition: left 0.6s, width 0.6s;
+  background: var(--s-color);
+  left: 0; width: 100%;
+}
+.session-range-poc {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gold);
+  box-shadow: 0 0 5px var(--gold);
+  transition: left 0.6s;
+}
+.session-range-price {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: #fff;
+  opacity: 0.75;
+  transition: left 0.6s;
+}
+.session-range-high {
+  position: absolute;
+  top: 0; bottom: 0;
+  right: 0; width: 2px;
+  background: var(--red);
+  opacity: 0.6;
+}
+.session-range-low {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 0; width: 2px;
+  background: var(--green);
+  opacity: 0.6;
+}
+.session-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--muted);
+  padding: 0 2px;
+}
+.session-no-data {
+  padding: 14px;
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
 </style>
 </head>
 <body>
@@ -1290,6 +1478,17 @@ footer {
     </div>
   </div>
 
+  <!-- ① d  SESSION HIGHS / LOWS / POC  ← NEW -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Session Levels</span>
+      <span class="panel-badge" id="sess-update-badge">H/L · POC · 1H</span>
+    </div>
+    <div class="sessions-wrap" id="sessions-wrap">
+      <div class="session-no-data">Loading session data…</div>
+    </div>
+  </div>
+
   <!-- ② CHART -->
   <div class="panel">
     <div class="panel-header">
@@ -1479,7 +1678,7 @@ footer {
 <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <script>
 // ──────────────────────────────────────────────
-// TRADINGVIEW CHART — now includes StochRSI pane
+// TRADINGVIEW CHART
 // ──────────────────────────────────────────────
 new TradingView.widget({
   autosize: true,
@@ -1494,7 +1693,7 @@ new TradingView.widget({
   hide_legend: false,
   studies: [
     "RSI@tv-basicstudies",
-    "StochasticRSI@tv-basicstudies",   // ← Stochastic RSI added below RSI pane
+    "StochasticRSI@tv-basicstudies",
     "VWAP@tv-basicstudies",
     "MACD@tv-basicstudies",
     "BB@tv-basicstudies"
@@ -1511,6 +1710,258 @@ new TradingView.widget({
 let lastPrice = 0;
 let klines = [];
 let _cachedKlines1h = null;
+
+// ══════════════════════════════════════════════
+// SESSION DEFINITIONS  (all times in UTC hours)
+// ══════════════════════════════════════════════
+// Asian:  00:00 – 09:00 UTC
+// London: 08:00 – 17:00 UTC   (overlaps Asian close)
+// NY:     13:00 – 22:00 UTC
+const SESSION_DEFS = [
+  {
+    id:    'asian',
+    name:  'Asian Session',
+    color: 'var(--session-asian)',
+    hex:   '#c8a84b',
+    startH: 0,
+    endH:   9,
+    timeLabel: '00:00–09:00 UTC',
+  },
+  {
+    id:    'london',
+    name:  'London Session',
+    color: 'var(--session-london)',
+    hex:   '#a78bfa',
+    startH: 8,
+    endH:   17,
+    timeLabel: '08:00–17:00 UTC',
+  },
+  {
+    id:    'ny',
+    name:  'New York Session',
+    color: 'var(--session-ny)',
+    hex:   '#38bdf8',
+    startH: 13,
+    endH:   22,
+    timeLabel: '13:00–22:00 UTC',
+  },
+];
+
+// ──────────────────────────────────────────────
+// Get UTC hour of a timestamp (ms)
+// ──────────────────────────────────────────────
+function utcHour(ms) {
+  return new Date(ms).getUTCHours();
+}
+function utcDayStart(ms) {
+  const d = new Date(ms);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+// ──────────────────────────────────────────────
+// Compute session POC from kline slice
+// ──────────────────────────────────────────────
+function sessionPOC(klineSlice) {
+  if (!klineSlice || klineSlice.length === 0) return null;
+  const highs  = klineSlice.map(k => parseFloat(k[2]));
+  const lows   = klineSlice.map(k => parseFloat(k[3]));
+  const vols   = klineSlice.map(k => parseFloat(k[5]));
+  const sHigh  = Math.max(...highs);
+  const sLow   = Math.min(...lows);
+  const range  = sHigh - sLow;
+  if (range <= 0) return (sHigh + sLow) / 2;
+
+  const BUCKETS = 60;
+  const bSize   = range / BUCKETS;
+  const buckets = new Array(BUCKETS).fill(0);
+
+  klineSlice.forEach((k, i) => {
+    const h = parseFloat(k[2]), l = parseFloat(k[3]), v = vols[i];
+    const lo = Math.max(0,           Math.floor((l - sLow) / bSize));
+    const hi = Math.min(BUCKETS - 1, Math.floor((h - sLow) / bSize));
+    const span = Math.max(hi - lo + 1, 1);
+    for (let b = lo; b <= hi; b++) buckets[b] += v / span;
+  });
+
+  let pocIdx = 0;
+  for (let b = 1; b < BUCKETS; b++) {
+    if (buckets[b] > buckets[pocIdx]) pocIdx = b;
+  }
+  return sLow + (pocIdx + 0.5) * bSize;
+}
+
+// ──────────────────────────────────────────────
+// Compute session H/L/POC for each session def
+// using the last two calendar days of 1h klines
+// to guarantee we always find a completed session
+// ──────────────────────────────────────────────
+function calcSessions(klines1h) {
+  const nowMs = Date.now();
+  const nowUTC = new Date(nowMs);
+  const curH  = nowUTC.getUTCHours();
+
+  // Look back 2 full calendar days worth of bars = 48 bars max
+  const lookback = klines1h.slice(-48);
+
+  return SESSION_DEFS.map(def => {
+    // Determine status: LIVE, CLOSED (today), or UPCOMING
+    const isLive = curH >= def.startH && curH < def.endH;
+
+    // Find the most recent window of bars that falls within this session's UTC hour range
+    // Filter bars: open time hour must be in [startH, endH)
+    const sessionBars = lookback.filter(k => {
+      const h = utcHour(Number(k[0]));
+      return h >= def.startH && h < def.endH;
+    });
+
+    if (!sessionBars.length) {
+      return { ...def, status: isLive ? 'LIVE' : 'NO DATA', high: null, low: null, poc: null, barCount: 0 };
+    }
+
+    // For non-live sessions, only use bars from the most recent completed session window
+    // i.e., bars that share the same calendar day as the last bar in the set
+    let useBars;
+    if (isLive) {
+      // Use today's bars only
+      const todayStart = utcDayStart(nowMs);
+      useBars = sessionBars.filter(k => Number(k[0]) >= todayStart);
+      if (!useBars.length) useBars = sessionBars; // fallback
+    } else {
+      // Use bars from the most recent day that has data for this session
+      const lastBarTime = Number(sessionBars[sessionBars.length - 1][0]);
+      const lastDay = utcDayStart(lastBarTime);
+      useBars = sessionBars.filter(k => utcDayStart(Number(k[0])) === lastDay);
+    }
+
+    const high = Math.max(...useBars.map(k => parseFloat(k[2])));
+    const low  = Math.min(...useBars.map(k => parseFloat(k[3])));
+    const poc  = sessionPOC(useBars);
+
+    // Status
+    let status = 'CLOSED';
+    if (isLive) status = 'LIVE';
+    else {
+      // Check if upcoming today (hasn't started yet)
+      if (curH < def.startH) status = 'UPCOMING';
+    }
+
+    // Date label for closed sessions
+    const lastK = useBars[useBars.length - 1];
+    const dateMs = Number(lastK[0]);
+    const d = new Date(dateMs);
+    const dateLabel = d.toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' });
+
+    return { ...def, status, high, low, poc, barCount: useBars.length, dateLabel };
+  });
+}
+
+// ──────────────────────────────────────────────
+// Render Sessions Panel
+// ──────────────────────────────────────────────
+function updateSessionsUI(sessions) {
+  const wrap = document.getElementById('sessions-wrap');
+  if (!wrap) return;
+
+  const price  = lastPrice;
+  const fmtP   = v => '$' + Math.round(v).toLocaleString('en-US');
+  const distPct = (v, ref) => {
+    const p = ((v - ref) / ref) * 100;
+    return (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+  };
+
+  wrap.innerHTML = sessions.map(s => {
+    if (s.status === 'NO DATA' || s.high === null) {
+      return `
+      <div class="session-block" style="--s-color:${s.color};">
+        <div class="session-header">
+          <div>
+            <div class="session-name">${s.name}</div>
+            <div class="session-time">${s.timeLabel}</div>
+          </div>
+          <span class="session-status sstat-closed">NO DATA</span>
+        </div>
+        <div class="session-no-data" style="padding:6px 0 0;text-align:left;">Insufficient history for this session.</div>
+      </div>`;
+    }
+
+    const statusClass = s.status === 'LIVE' ? 'sstat-live' : s.status === 'UPCOMING' ? 'sstat-upcoming' : 'sstat-closed';
+    const statusLabel = s.status === 'LIVE' ? '● LIVE' : s.status === 'UPCOMING' ? '◌ UPCOMING' : `Closed ${s.dateLabel}`;
+
+    const range = s.high - s.low;
+    const safeLow = s.low - range * 0.02;
+    const safeHigh = s.high + range * 0.02;
+    const fullRange = safeHigh - safeLow;
+
+    const toPct = v => Math.max(0, Math.min(100, ((v - safeLow) / fullRange) * 100));
+    const pocPct   = toPct(s.poc);
+    const pricePct = price ? toPct(price) : null;
+
+    // Distance lines under prices
+    const highDist = price ? distPct(s.high, price) : '';
+    const lowDist  = price ? distPct(s.low, price)  : '';
+    const pocDist  = price ? distPct(s.poc, price)  : '';
+
+    // Color for high dist (above = red, below = green for longs)
+    const highDistColor = (s.high >= price) ? 'var(--red)' : 'var(--green)';
+    const lowDistColor  = (s.low  <= price) ? 'var(--green)' : 'var(--red)';
+    const pocDistColor  = Math.abs(s.poc - price) / price < 0.002 ? 'var(--gold)' : 'var(--muted)';
+
+    // Range bar: show HL as 100%, POC and price as markers
+    const hlPct  = 100; // full bar = H to L
+
+    return `
+    <div class="session-block" style="--s-color:${s.color};">
+      <div class="session-header">
+        <div>
+          <div class="session-name">${s.name}</div>
+          <div class="session-time">${s.timeLabel} · ${s.barCount}h of data</div>
+        </div>
+        <span class="session-status ${statusClass}">${statusLabel}</span>
+      </div>
+
+      <div class="session-values">
+        <div class="session-val-cell">
+          <span class="session-val-lbl">Session High</span>
+          <span class="session-val-price" style="color:var(--red);">${fmtP(s.high)}</span>
+          <span class="session-val-dist" style="color:${highDistColor};">${highDist}</span>
+        </div>
+        <div class="session-divider-v"></div>
+        <div class="session-val-cell">
+          <span class="session-val-lbl">Session Low</span>
+          <span class="session-val-price" style="color:var(--green);">${fmtP(s.low)}</span>
+          <span class="session-val-dist" style="color:${lowDistColor};">${lowDist}</span>
+        </div>
+        <div class="session-divider-v"></div>
+        <div class="session-val-cell">
+          <span class="session-val-lbl">Session POC</span>
+          <span class="session-val-price" style="color:var(--gold);">${fmtP(s.poc)}</span>
+          <span class="session-val-dist" style="color:${pocDistColor};">${pocDist}</span>
+        </div>
+        <div class="session-divider-v"></div>
+        <div class="session-val-cell">
+          <span class="session-val-lbl">Range</span>
+          <span class="session-val-price" style="color:${s.hex};">$${Math.round(s.high - s.low).toLocaleString()}</span>
+          <span class="session-val-dist">${(((s.high - s.low) / s.low) * 100).toFixed(2)}%</span>
+        </div>
+      </div>
+
+      <!-- Visual range strip: Low → High with POC + price markers -->
+      <div class="session-range-wrap">
+        <div class="session-range-fill"></div>
+        <div class="session-range-low"></div>
+        <div class="session-range-high"></div>
+        <div class="session-range-poc"   style="left:${pocPct}%;"></div>
+        ${pricePct !== null ? `<div class="session-range-price" style="left:${pricePct}%;"></div>` : ''}
+      </div>
+      <div class="session-range-labels">
+        <span style="color:var(--green);">L ${fmtP(s.low)}</span>
+        <span style="color:var(--gold);">◆ POC ${fmtP(s.poc)}</span>
+        <span style="color:#fff;opacity:0.6;">│ Price</span>
+        <span style="color:var(--red);">H ${fmtP(s.high)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 // ──────────────────────────────────────────────
 // FETCH HELPERS
@@ -1551,14 +2002,9 @@ function smaSeries(arr, period) {
   return out;
 }
 
-// ──────────────────────────────────────────────
-// RSI — rolling, returns full array
-// ──────────────────────────────────────────────
 function calcRSISeries(closes, period = 14) {
   const rsi = new Array(closes.length).fill(null);
   if (closes.length <= period) return rsi;
-
-  // Seed: simple average of first `period` changes
   let gains = 0, losses = 0;
   for (let i = 1; i <= period; i++) {
     const d = closes[i] - closes[i - 1];
@@ -1567,8 +2013,6 @@ function calcRSISeries(closes, period = 14) {
   let avgGain = gains / period;
   let avgLoss = losses / period;
   rsi[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
-
-  // Wilder smoothing for remaining bars
   for (let i = period + 1; i < closes.length; i++) {
     const d = closes[i] - closes[i - 1];
     avgGain = (avgGain * (period - 1) + Math.max(d, 0)) / period;
@@ -1578,56 +2022,34 @@ function calcRSISeries(closes, period = 14) {
   return rsi;
 }
 
-// Single RSI value (scalar) for existing code
 function calcRSI(closes, period = 14) {
   const series = calcRSISeries(closes, period);
   const last = series.filter(v => v !== null);
   return last.length ? last[last.length - 1] : 50;
 }
 
-// ──────────────────────────────────────────────
-// STOCHASTIC RSI — fully correct implementation
-// StochRSI(i) = (RSI(i) - min(RSI, N)) / (max(RSI, N) - min(RSI, N))
-// %K = 3-period SMA of StochRSI  (×100 to put on 0–100 scale)
-// %D = 3-period SMA of %K
-// Returns { kVal, dVal, series: [{k,d},...] } for last N bars
-// ──────────────────────────────────────────────
 function calcStochRSI(closes, rsiPeriod = 14, stochPeriod = 14, kSmooth = 3, dSmooth = 3) {
   const rsiSeries = calcRSISeries(closes, rsiPeriod);
-
-  // Raw StochRSI — only valid where we have enough RSI values
   const rawStoch = new Array(closes.length).fill(null);
   for (let i = rsiPeriod + stochPeriod - 1; i < closes.length; i++) {
-    // Window of RSI values for this bar
     const window = rsiSeries.slice(i - stochPeriod + 1, i + 1).filter(v => v !== null);
     if (window.length < stochPeriod) continue;
     const minR = Math.min(...window);
     const maxR = Math.max(...window);
     rawStoch[i] = maxR === minR ? 0 : ((rsiSeries[i] - minR) / (maxR - minR)) * 100;
   }
-
-  // %K = kSmooth-period SMA of rawStoch (drop nulls)
   const kArr = smaSeries(rawStoch.filter(v => v !== null), kSmooth);
-  // %D = dSmooth-period SMA of %K
   const dArr = smaSeries(kArr.filter(v => v !== null), dSmooth);
-
   const kLast = kArr.filter(v => v !== null);
   const dLast = dArr.filter(v => v !== null);
-
   const kVal = kLast.length ? kLast[kLast.length - 1] : 50;
   const dVal = dLast.length ? dLast[dLast.length - 1] : 50;
-
-  // Last 60 bars for sparkline (zip k and d)
   const kTail = kLast.slice(-60);
   const dTail = dLast.slice(-60);
   const series = kTail.map((k, i) => ({ k, d: dTail[i] ?? null }));
-
   return { kVal, dVal, series };
 }
 
-// ──────────────────────────────────────────────
-// STOCH RSI SPARKLINE CANVAS RENDERER
-// ──────────────────────────────────────────────
 function renderStochRSIChart(series, kVal, dVal) {
   const canvas = document.getElementById('srsi-canvas');
   if (!canvas || !series.length) return;
@@ -1637,18 +2059,13 @@ function renderStochRSIChart(series, kVal, dVal) {
   canvas.width  = W * (window.devicePixelRatio || 1);
   canvas.height = H * (window.devicePixelRatio || 1);
   ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-
   ctx.clearRect(0, 0, W, H);
-
-  // Overbought / oversold zones
   const y80 = H - (80 / 100) * H;
   const y20 = H - (20 / 100) * H;
   ctx.fillStyle = 'rgba(255,61,90,0.06)';
   ctx.fillRect(0, 0, W, y80);
   ctx.fillStyle = 'rgba(0,230,118,0.06)';
   ctx.fillRect(0, y20, W, H - y20);
-
-  // Zone lines
   ctx.strokeStyle = 'rgba(255,61,90,0.25)';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
@@ -1656,12 +2073,9 @@ function renderStochRSIChart(series, kVal, dVal) {
   ctx.strokeStyle = 'rgba(0,230,118,0.25)';
   ctx.beginPath(); ctx.moveTo(0, y20); ctx.lineTo(W, y20); ctx.stroke();
   ctx.setLineDash([]);
-
   const n = series.length;
   const toX = i => (i / (n - 1)) * W;
   const toY = v => H - (v / 100) * H;
-
-  // Fill area between K and D
   ctx.beginPath();
   series.forEach((pt, i) => {
     if (pt.k === null) return;
@@ -1670,8 +2084,6 @@ function renderStochRSIChart(series, kVal, dVal) {
   ctx.strokeStyle = kVal > 80 ? '#ff3d5a' : kVal < 20 ? '#00e676' : '#00d4ff';
   ctx.lineWidth = 1.5;
   ctx.stroke();
-
-  // %D line (dashed)
   ctx.beginPath();
   series.forEach((pt, i) => {
     if (pt.d === null) return;
@@ -1682,8 +2094,6 @@ function renderStochRSIChart(series, kVal, dVal) {
   ctx.setLineDash([4, 2]);
   ctx.stroke();
   ctx.setLineDash([]);
-
-  // Current K dot
   const lastPt = series[series.length - 1];
   if (lastPt && lastPt.k !== null) {
     ctx.beginPath();
@@ -1695,15 +2105,12 @@ function renderStochRSIChart(series, kVal, dVal) {
 
 function updateStochRSIUI(stoch) {
   const { kVal, dVal, series } = stoch;
-
   const kEl = document.getElementById('srsi-k-val');
   kEl.textContent = '%K ' + kVal.toFixed(1);
   if (kVal > 80)      { kEl.style.color = 'var(--red)'; }
   else if (kVal < 20) { kEl.style.color = 'var(--green)'; }
   else                { kEl.style.color = 'var(--accent)'; }
-
   document.getElementById('srsi-d-val').textContent = 'D: ' + dVal.toFixed(1);
-
   const badge = document.getElementById('srsi-sig-badge');
   if (kVal > 80) {
     badge.textContent = 'Overbought';
@@ -1718,7 +2125,6 @@ function updateStochRSIUI(stoch) {
     badge.textContent = 'K < D Bear';
     badge.className = 'ind-sig sig-sell';
   }
-
   renderStochRSIChart(series, kVal, dVal);
 }
 
@@ -1765,8 +2171,6 @@ function analyzeMarket(klineData) {
   const ema50   = calcEMA(closes, 50);
   const ema200  = calcEMA(closes, 200);
   const atr     = calcATR(highs, lows, closes);
-
-  // Corrected Stoch RSI
   const stoch   = calcStochRSI(closes, 14, 14, 3, 3);
   const stochK  = stoch.kVal;
   const stochD  = stoch.dVal;
@@ -1781,17 +2185,14 @@ function analyzeMarket(klineData) {
   const volRatio = lastVol / avgVol;
 
   const bbPos = (price - bb.lower) / (bb.upper - bb.lower);
-
   const signals = [];
 
-  // RSI
   if (rsi < 30)      signals.push({ name: 'RSI', val: rsi.toFixed(1), sig: 'BUY',  reason: 'Oversold' });
   else if (rsi < 45) signals.push({ name: 'RSI', val: rsi.toFixed(1), sig: 'BUY',  reason: 'Leaning bullish' });
   else if (rsi > 70) signals.push({ name: 'RSI', val: rsi.toFixed(1), sig: 'SELL', reason: 'Overbought' });
   else if (rsi > 55) signals.push({ name: 'RSI', val: rsi.toFixed(1), sig: 'SELL', reason: 'Leaning bearish' });
   else               signals.push({ name: 'RSI', val: rsi.toFixed(1), sig: 'NEUTRAL', reason: 'Mid-range' });
 
-  // MACD
   if (macd.hist > 0 && macd.macd > macd.signal)
     signals.push({ name: 'MACD', val: macd.hist.toFixed(2), sig: 'BUY',  reason: 'Bullish crossover' });
   else if (macd.hist < 0 && macd.macd < macd.signal)
@@ -1799,31 +2200,25 @@ function analyzeMarket(klineData) {
   else
     signals.push({ name: 'MACD', val: macd.hist.toFixed(2), sig: 'NEUTRAL', reason: 'No clear cross' });
 
-  // EMA 9/21
   if (e9 > e21) signals.push({ name: 'EMA 9/21', val: `${e9.toFixed(0)}/${e21.toFixed(0)}`, sig: 'BUY',  reason: 'Bull cross' });
   else          signals.push({ name: 'EMA 9/21', val: `${e9.toFixed(0)}/${e21.toFixed(0)}`, sig: 'SELL', reason: 'Bear cross' });
 
-  // Price vs EMA50
   if (price > e50) signals.push({ name: 'EMA 50', val: e50.toFixed(0), sig: 'BUY',  reason: 'Price above' });
   else             signals.push({ name: 'EMA 50', val: e50.toFixed(0), sig: 'SELL', reason: 'Price below' });
 
-  // Price vs EMA200
   if (price > e200) signals.push({ name: 'EMA 200', val: e200.toFixed(0), sig: 'BUY',  reason: 'Price above' });
   else              signals.push({ name: 'EMA 200', val: e200.toFixed(0), sig: 'SELL', reason: 'Price below' });
 
-  // Bollinger
   if (bbPos < 0.15)     signals.push({ name: 'Bollinger', val: bbPos.toFixed(2), sig: 'BUY',  reason: 'Near lower band' });
   else if (bbPos > 0.85) signals.push({ name: 'Bollinger', val: bbPos.toFixed(2), sig: 'SELL', reason: 'Near upper band' });
   else                   signals.push({ name: 'Bollinger', val: bbPos.toFixed(2), sig: 'NEUTRAL', reason: 'Mid band' });
 
-  // Stoch RSI — use %K vs %D crossover + zone
-  if      (stochK > 80)               signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'SELL',    reason: 'Overbought' });
-  else if (stochK < 20)               signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'BUY',     reason: 'Oversold' });
+  if      (stochK > 80)                signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'SELL',    reason: 'Overbought' });
+  else if (stochK < 20)                signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'BUY',     reason: 'Oversold' });
   else if (stochK > stochD && stochK < 80) signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'BUY',  reason: 'K > D bullish' });
   else if (stochK < stochD && stochK > 20) signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'SELL', reason: 'K < D bearish' });
-  else                                    signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'NEUTRAL', reason: 'Mid-range' });
+  else                                     signals.push({ name: 'Stoch RSI', val: `K:${stochK.toFixed(1)}`, sig: 'NEUTRAL', reason: 'Mid-range' });
 
-  // Volume
   if (volRatio > 1.5)     signals.push({ name: 'Volume', val: `${volRatio.toFixed(2)}x avg`, sig: 'BUY',  reason: 'High volume surge' });
   else if (volRatio < 0.5) signals.push({ name: 'Volume', val: `${volRatio.toFixed(2)}x avg`, sig: 'SELL', reason: 'Low volume' });
   else                     signals.push({ name: 'Volume', val: `${volRatio.toFixed(2)}x avg`, sig: 'NEUTRAL', reason: 'Normal volume' });
@@ -1833,18 +2228,15 @@ function analyzeMarket(klineData) {
   const neutCount = signals.filter(s => s.sig === 'NEUTRAL').length;
   const total = signals.length;
 
-  // Net bias: ranges from -1 (all sell) to +1 (all buy), mapped to 0–1
-  // Neutrals are correctly ignored — only buy vs sell counts
-  // Example: 3B/3N/2S → net = (3-2)/8 = 0.125 → score = 0.5625 → BUY (not SELL)
-  const netBias = (buyCount - sellCount) / total; // -1 to +1
-  const score   = (netBias + 1) / 2;              // 0 to 1
+  const netBias = (buyCount - sellCount) / total;
+  const score   = (netBias + 1) / 2;
 
   let label;
-  if      (score >= 0.75) label = 'STRONG BUY';  // net > +0.5  (e.g. 6B/0S or 5B/1S)
-  else if (score >= 0.575) label = 'BUY';         // net > +0.15 (e.g. 4B/2S or 3B/1S)
-  else if (score >= 0.425) label = 'NEUTRAL';     // net ±0.15   (e.g. 3B/3S or 3B/2S)
-  else if (score >= 0.25)  label = 'SELL';        // net < -0.15 (e.g. 2B/4S)
-  else                     label = 'STRONG SELL'; // net < -0.5  (e.g. 0B/6S)
+  if      (score >= 0.75)  label = 'STRONG BUY';
+  else if (score >= 0.575) label = 'BUY';
+  else if (score >= 0.425) label = 'NEUTRAL';
+  else if (score >= 0.25)  label = 'SELL';
+  else                     label = 'STRONG SELL';
 
   const recentHighs = highs.slice(-50);
   const recentLows  = lows.slice(-50);
@@ -1865,7 +2257,7 @@ function analyzeMarket(klineData) {
   return {
     signals, buyCount, sellCount, neutCount, total, score, label,
     price, rsi, macd, bb, e9, e21, e50, e200, atr,
-    stochK, stochD, stoch,   // ← expose full stoch object for sparkline
+    stochK, stochD, stoch,
     volRatio, resistance, support,
     obBullStart, obBullEnd, obBearStart, obBearEnd,
     confidence, isBullTrend, isBearTrend, isHighVol
@@ -1891,7 +2283,6 @@ function updateSignalUI(analysis) {
           isBullTrend, isBearTrend, isHighVol } = analysis;
 
   const color = SIGNAL_COLORS[label];
-
   const bar = document.getElementById('signal-bar');
   bar.style.setProperty('--signal-color', color);
 
@@ -1922,7 +2313,6 @@ function updateSignalUI(analysis) {
   document.getElementById('rec-summary').innerHTML = rec;
   document.getElementById('rec-summary').style.borderLeftColor = color;
 
-  // Indicators list
   const grid = document.getElementById('indicators-grid');
   grid.innerHTML = signals.map(s => `
     <div class="ind-row">
@@ -1932,10 +2322,8 @@ function updateSignalUI(analysis) {
     </div>
   `).join('');
 
-  // Stoch RSI sparkline
   updateStochRSIUI(stoch);
 
-  // Key levels
   const pct = (v, ref) => {
     const d = ((v - ref) / ref * 100);
     return (d >= 0 ? '+' : '') + d.toFixed(2) + '%';
@@ -1957,7 +2345,6 @@ function updateSignalUI(analysis) {
     </div>
   `).join('');
 
-  // Confidence ring
   const confPct = confidence;
   document.getElementById('conf-pct').textContent = confPct + '%';
   const ring = document.getElementById('conf-ring');
@@ -1971,7 +2358,6 @@ function updateSignalUI(analysis) {
   else                    confText = `<b>Low Confidence</b> — Conflicting signals. Do not trade.`;
   document.getElementById('conf-text').innerHTML = confText;
 
-  // Regime
   const regimes = [
     { label: 'Macro Trend',    val: isBullTrend ? 'Bullish' : isBearTrend ? 'Bearish' : 'Ranging', color: isBullTrend ? '#00e676' : isBearTrend ? '#ff3d5a' : '#90a4ae' },
     { label: 'Momentum (RSI)', val: rsi > 55 ? 'Strong' : rsi < 45 ? 'Weak' : 'Neutral', color: rsi > 55 ? '#00e676' : rsi < 45 ? '#ff3d5a' : '#90a4ae' },
@@ -2339,12 +2725,9 @@ function updateCommandSummary(analysis1h, analysis4h, ivm) {
 
   document.getElementById('cmd-time').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
-  // ── Build and store snapshot for the lock button ──────────
-  // Calculate precise entry zone, SL, TP1, TP2 from analysis + IVM
   let entryPrice, entryZoneLo, entryZoneHi, slPrice, tp1Price, tp2Price;
 
   if (action === 'STRONG BUY' || action === 'BUY') {
-    // Long: enter at VAL or OB zone, SL below support, TP at VAH then resistance
     entryZoneLo = ivm ? Math.min(ivm.val, analysis1h.obBullStart) : analysis1h.obBullStart;
     entryZoneHi = ivm ? Math.max(ivm.val * 1.002, analysis1h.obBullEnd) : analysis1h.obBullEnd;
     entryPrice  = (entryZoneLo + entryZoneHi) / 2;
@@ -2352,7 +2735,6 @@ function updateCommandSummary(analysis1h, analysis4h, ivm) {
     tp1Price    = ivm ? ivm.vah : analysis1h.resistance;
     tp2Price    = analysis1h.resistance;
   } else if (action === 'SELL' || action === 'STRONG SELL') {
-    // Short: enter at VAH or bearish OB, SL above resistance, TP at VAL then support
     entryZoneLo = ivm ? Math.min(ivm.vah * 0.999, analysis1h.obBearStart) : analysis1h.obBearStart;
     entryZoneHi = ivm ? Math.max(ivm.vah, analysis1h.obBearEnd) : analysis1h.obBearEnd;
     entryPrice  = (entryZoneLo + entryZoneHi) / 2;
@@ -2389,6 +2771,11 @@ async function update() {
     const ivm = calcIVM(klines1h);
     updateIVM(ivm);
     updateCommandSummary(analysis1h, analysis4h, ivm);
+
+    // ── Session Levels ──
+    const sessions = calcSessions(klines1h);
+    updateSessionsUI(sessions);
+
   } catch (e) {
     console.error('Update error', e);
   }
@@ -2407,6 +2794,9 @@ setInterval(async () => {
           : k
       );
       updateIVM(calcIVM(patched));
+      // Re-render session strips with updated price (cheap — no recalc of H/L)
+      const sessions = calcSessions(_cachedKlines1h);
+      updateSessionsUI(sessions);
     }
     tickSetups();
   } catch (e) {}
@@ -2423,7 +2813,6 @@ function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(c => {
     c.classList.toggle('active', c.id === 'tab-' + name);
   });
-  // Re-render sparkline after tab switch (canvas might have been hidden)
   if (name === 'indicators') setTimeout(() => {
     const c = document.getElementById('srsi-canvas');
     if (c && c._stochData) renderStochRSIChart(c._stochData.series, c._stochData.kVal, c._stochData.dVal);
@@ -2432,15 +2821,10 @@ function switchTab(name) {
 
 // ══════════════════════════════════════════════
 // TRADE SETUP PLANNER
-// Freezes a signal into an actionable plan that
-// tracks price independently of live signal flips
 // ══════════════════════════════════════════════
+let _lockedSetups  = [];
+let _lastCmdSnap   = null;
 
-// Persisted state
-let _lockedSetups  = [];   // array of setup objects
-let _lastCmdSnap   = null; // snapshot of last command summary output
-
-// Called by updateCommandSummary to keep a snapshot available for locking
 function storeCommandSnapshot(snap) {
   _lastCmdSnap = snap;
   const btn = document.getElementById('lock-btn');
@@ -2459,19 +2843,14 @@ function storeCommandSnapshot(snap) {
 function lockSetup() {
   if (!_lastCmdSnap || _lastCmdSnap.action === 'WAIT / FLAT') return;
   const snap = _lastCmdSnap;
-
   const isLong  = snap.action === 'STRONG BUY' || snap.action === 'BUY';
   const color   = snap.cmdColor;
-
-  // Entry zone: for longs, buy at support / OB; for shorts, sell at resistance / OB
-  // Use the IVM + analysis data captured in the snapshot
   const entryPrice  = snap.entryPrice;
   const slPrice     = snap.slPrice;
   const tp1Price    = snap.tp1Price;
   const tp2Price    = snap.tp2Price;
   const entryZoneLo = snap.entryZoneLo;
   const entryZoneHi = snap.entryZoneHi;
-
   const rr = tp1Price && entryPrice && slPrice
     ? Math.abs(tp1Price - entryPrice) / Math.abs(entryPrice - slPrice)
     : null;
@@ -2491,12 +2870,12 @@ function lockSetup() {
     lockedAt:    new Date().toLocaleTimeString(),
     lockedPrice: lastPrice,
     reasoning:   snap.reasoning,
-    status:      'WAITING',   // WAITING → HIT → ACTIVE → CLOSED/STOPPED
+    status:      'WAITING',
     entryHitAt:  null,
     unrealizedPnl: null,
   };
 
-  _lockedSetups.unshift(setup);  // newest first
+  _lockedSetups.unshift(setup);
   renderSetupPlanner();
   requestNotificationPermission();
 }
@@ -2509,41 +2888,27 @@ function cancelSetup(id) {
 function renderSetupPlanner() {
   const wrap = document.getElementById('setup-planner-wrap');
   if (!wrap) return;
-
-  if (_lockedSetups.length === 0) {
-    wrap.style.display = 'none';
-    return;
-  }
+  if (_lockedSetups.length === 0) { wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
-
   wrap.innerHTML = _lockedSetups.map(s => buildSetupCardHTML(s)).join('');
 }
 
 function buildSetupCardHTML(s) {
   const color    = s.color;
   const dirLabel = s.direction === 'LONG' ? '↑ LONG' : '↓ SHORT';
-  const tp2Row   = s.tp2Price ? `<div class="pnl-item"><span class="pnl-lbl">TP2</span><span class="pnl-val" style="color:${color};">$${Math.round(s.tp2Price).toLocaleString()}</span></div>` : '';
-
-  // Distance from current price to entry zone
   const cur = lastPrice || s.lockedPrice;
-  const midEntry = s.entryPrice;
-  const distToEntry = midEntry - cur; // positive = price needs to go up (for short); negative = price below entry
+  const distToEntry = s.entryPrice - cur;
   const distAbs = Math.abs(distToEntry);
   const distPct = ((distAbs / cur) * 100).toFixed(2);
-
-  // Progress: 0% = locked price, 100% = entry zone hit
-  const totalMove = Math.abs(midEntry - s.lockedPrice);
+  const totalMove = Math.abs(s.entryPrice - s.lockedPrice);
   const currentMove = Math.abs(cur - s.lockedPrice);
   const rawProgress = totalMove > 0 ? Math.min(currentMove / totalMove, 1) : 0;
   const progressPct = Math.round(rawProgress * 100);
-
-  // Determine bar color based on how close
   let barColor = '#4a6070';
   if (progressPct >= 100) barColor = color;
   else if (progressPct >= 75) barColor = '#ffe600';
   else if (progressPct >= 40) barColor = '#ff9100';
 
-  // Status label
   let statusClass = 'status-waiting';
   let statusText  = 'WAITING ENTRY';
   if (s.status === 'HIT')     { statusClass = 'status-hit';     statusText = '⚡ ENTRY ZONE HIT'; }
@@ -2557,7 +2922,6 @@ function buildSetupCardHTML(s) {
         : `$${distAbs.toFixed(0)} (${distPct}%) to entry zone`)
     : (s.status === 'HIT' ? 'In entry zone — execute now' : '');
 
-  // Unrealized P&L if active
   let pnlHtml = '';
   if (s.status === 'ACTIVE' || s.status === 'HIT') {
     const rawPnl = s.direction === 'LONG'
@@ -2576,7 +2940,6 @@ function buildSetupCardHTML(s) {
       </div>
       <span class="setup-status-badge ${statusClass}">${statusText}</span>
     </div>
-
     <div class="setup-levels">
       <div class="setup-level-cell">
         <span class="setup-level-lbl">Stop Loss</span>
@@ -2591,7 +2954,6 @@ function buildSetupCardHTML(s) {
         <span class="setup-level-val" style="color:var(--green);">$${Math.round(s.tp1Price).toLocaleString()}</span>
       </div>
     </div>
-
     ${s.status === 'WAITING' || s.status === 'HIT' ? `
     <div class="entry-track-wrap">
       <div class="entry-track-label">
@@ -2604,7 +2966,6 @@ function buildSetupCardHTML(s) {
       </div>
       <div class="entry-dist-text" style="color:${barColor};">${distLabel}</div>
     </div>` : ''}
-
     <div class="setup-pnl-row">
       ${pnlHtml}
       ${s.tp2Price ? `<div class="pnl-item"><span class="pnl-lbl">TP2</span><span class="pnl-val" style="color:${color};">$${Math.round(s.tp2Price).toLocaleString()}</span></div>` : ''}
@@ -2614,55 +2975,34 @@ function buildSetupCardHTML(s) {
         <span class="pnl-val" style="font-size:0.6rem;color:var(--muted);font-weight:400;white-space:normal;line-height:1.4;">${s.reasoning.replace(/<[^>]*>/g,'').slice(0,90)}…</span>
       </div>
     </div>
-
     <button class="setup-cancel-btn" onclick="cancelSetup(${s.id})">✕ Cancel This Setup</button>
   </div>`;
 }
 
-// Tick function — called every 5 s with live price
 function tickSetups() {
   if (!_lockedSetups.length) return;
   let needsRender = false;
-
   _lockedSetups.forEach(s => {
     if (s.status === 'CLOSED' || s.status === 'STOPPED') return;
-
     const cur = lastPrice;
     if (!cur) return;
-
     const inZone = cur >= s.entryZoneLo && cur <= s.entryZoneHi;
-
-    // WAITING → HIT
     if (s.status === 'WAITING' && inZone) {
       s.status     = 'HIT';
       s.entryHitAt = new Date().toLocaleTimeString();
       showEntryToast(s);
       needsRender = true;
     }
-
-    // HIT: if price leaves zone without being marked active, revert to WAITING
-    if (s.status === 'HIT' && !inZone) {
-      s.status    = 'WAITING';
-      needsRender = true;
-    }
-
-    // Check stop loss breach (treat HIT as implicitly entered)
+    if (s.status === 'HIT' && !inZone) { s.status = 'WAITING'; needsRender = true; }
     if (s.status === 'HIT' || s.status === 'ACTIVE') {
-      const stopped = s.direction === 'LONG'
-        ? cur <= s.slPrice
-        : cur >= s.slPrice;
-      const tp1hit  = s.direction === 'LONG'
-        ? cur >= s.tp1Price
-        : cur <= s.tp1Price;
-
+      const stopped = s.direction === 'LONG' ? cur <= s.slPrice : cur >= s.slPrice;
+      const tp1hit  = s.direction === 'LONG' ? cur >= s.tp1Price : cur <= s.tp1Price;
       if (stopped) { s.status = 'STOPPED'; needsRender = true; }
       if (tp1hit)  { s.status = 'CLOSED';  needsRender = true; }
     }
   });
-
   if (needsRender) renderSetupPlanner();
   else {
-    // Just update progress bars without full re-render
     _lockedSetups.forEach(s => {
       const card = document.getElementById('setup-' + s.id);
       if (!card || (s.status !== 'WAITING' && s.status !== 'HIT')) return;
@@ -2709,12 +3049,6 @@ function requestNotificationPermission() {
   }
 }
 
-function sendNotification(title, body) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '' });
-  }
-}
-
 // ──────────────────────────────────────────────
 // RISK CALCULATOR
 // ──────────────────────────────────────────────
@@ -2724,20 +3058,16 @@ function calcPosition() {
   const entry   = parseFloat(document.getElementById('c-entry').value)   || lastPrice;
   const stop    = parseFloat(document.getElementById('c-stop').value);
   const tp      = parseFloat(document.getElementById('c-tp').value);
-
   if (!entry || !stop) { alert('Please enter Entry and Stop Loss prices.'); return; }
-
   const riskAmt = account * riskPct / 100;
   const slDist  = Math.abs(entry - stop);
   const posSize = riskAmt / slDist;
   const posVal  = posSize * entry;
-
   const out = document.getElementById('calc-output');
   out.classList.add('visible');
   document.getElementById('o-risk-amt').textContent = '$' + riskAmt.toFixed(2);
   document.getElementById('o-pos-size').textContent = posSize.toFixed(6) + ' BTC';
   document.getElementById('o-pos-val').textContent  = '$' + posVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
-
   if (tp) {
     const profit = posSize * Math.abs(tp - entry);
     const rr     = Math.abs(tp - entry) / slDist;
