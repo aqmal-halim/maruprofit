@@ -2172,13 +2172,42 @@ function updateSessionsUI(sessions) {
 // ──────────────────────────────────────────────
 // FETCH HELPERS
 // ──────────────────────────────────────────────
+// ──────────────────────────────────────────────
+// FETCH HELPERS
+// Uses data-api.binance.vision which has open
+// CORS headers — works from any browser/domain
+// Falls back to api.binance.com if needed
+// ──────────────────────────────────────────────
+const BINANCE_ENDPOINTS = [
+  'https://data-api.binance.vision',   // Public data endpoint — open CORS
+  'https://api1.binance.com',          // Fallback 1
+  'https://api2.binance.com',          // Fallback 2
+  'https://api.binance.com',           // Fallback 3
+];
+let _activeEndpoint = BINANCE_ENDPOINTS[0];
+
+async function binanceFetch(path) {
+  // Try current active endpoint first
+  for (let i = 0; i < BINANCE_ENDPOINTS.length; i++) {
+    const base = i === 0 ? _activeEndpoint : BINANCE_ENDPOINTS[i];
+    try {
+      const r = await fetch(base + path, { mode: 'cors' });
+      if (r.ok) {
+        _activeEndpoint = base; // remember working endpoint
+        return r.json();
+      }
+    } catch (e) {
+      // Try next endpoint
+    }
+  }
+  throw new Error('All Binance endpoints failed — check internet connection');
+}
+
 async function fetchTicker() {
-  const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
-  return r.json();
+  return binanceFetch('/api/v3/ticker/24hr?symbol=BTCUSDT');
 }
 async function fetchKlines(interval, limit) {
-  const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
-  return r.json();
+  return binanceFetch(`/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
 }
 
 // ──────────────────────────────────────────────
@@ -4165,9 +4194,13 @@ async function update() {
   try {
     const [tickerData, klines1h, klines4h] = await Promise.all([
       fetchTicker(),
-      fetchKlines('1h', 300),   // extra bars for PDH/PDL (need ~48h)
+      fetchKlines('1h', 300),
       fetchKlines('4h', 150)
     ]);
+    // Clear any error state
+    const errEl = document.getElementById('api-error-banner');
+    if (errEl) errEl.style.display = 'none';
+
     updateTickerUI(tickerData);
     _cachedKlines1h = klines1h;
     const analysis1h = analyzeMarket(klines1h);
@@ -4185,11 +4218,23 @@ async function update() {
     const ict = calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h);
     updateICTPanel(ict);
 
-    // Legacy command summary hidden — ICT panel replaces it
+    // Legacy command summary
     updateCommandSummary(analysis1h, analysis4h, ivm);
 
   } catch (e) {
     console.error('Update error', e);
+    // Show error banner
+    let errEl = document.getElementById('api-error-banner');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.id = 'api-error-banner';
+      errEl.style.cssText = 'position:fixed;top:52px;left:0;right:0;z-index:999;background:#ff3d5a;color:#000;font-family:Syne,sans-serif;font-weight:700;font-size:0.72rem;padding:8px 16px;text-align:center;letter-spacing:1px;';
+      document.body.appendChild(errEl);
+    }
+    errEl.style.display = 'block';
+    errEl.textContent = '⚠ API connection failed — retrying… (' + e.message + ')';
+    // Retry sooner on error
+    setTimeout(update, 8000);
   }
 }
 
@@ -4198,8 +4243,7 @@ setInterval(update, 60000);
 setInterval(async () => {
   try {
     const d = await fetchTicker();
-    updateTickerUI(d);
-    if (_cachedKlines1h) {
+    updateTickerUI(d);    if (_cachedKlines1h) {
       const patched = _cachedKlines1h.map((k, i) =>
         i === _cachedKlines1h.length - 1
           ? [...k.slice(0, 4), String(lastPrice), ...k.slice(5)]
