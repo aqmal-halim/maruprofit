@@ -1399,6 +1399,9 @@ footer {
       <span class="bias-pill bias-eq" id="pd-bias-pill">EQUILIBRIUM</span>
     </div>
 
+    <!-- Session Sweep Alert — hidden until sweep detected -->
+    <div id="sweep-status" style="display:none;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);flex-wrap:wrap;"></div>
+
     <!-- Premium / Discount gauge -->
     <div class="pd-gauge-wrap">
       <div class="pd-gauge-labels">
@@ -3190,200 +3193,548 @@ function calcOTE(klines, direction) {
 }
 
 // ══════════════════════════════════════════════
-// ICT COMPREHENSIVE ANALYSIS ENGINE
-// Combines: killzone, premium/discount, HTF bias,
-// FVGs, PDH/PDL, liquidity pools, OTE, sessions
+// MARKET STRUCTURE SHIFT (MSS) DETECTOR
+// After a liquidity sweep, detect if price has
+// broken a recent swing in the opposite direction
+// on the 1H chart — this confirms the reversal
+// ══════════════════════════════════════════════
+function detectMSS(klines, direction, sweepBarIdx, lookback = 10) {
+  // direction = 'LONG': we swept lows, now look for a bullish MSS (break above recent swing high)
+  // direction = 'SHORT': we swept highs, now look for a bearish MSS (break below recent swing low)
+  const n = klines.length;
+  const startIdx = Math.max(0, sweepBarIdx - lookback);
+  const slice = klines.slice(startIdx, n);
+  const closes = slice.map(k => parseFloat(k[4]));
+  const highs  = slice.map(k => parseFloat(k[2]));
+  const lows   = slice.map(k => parseFloat(k[3]));
+  const m = slice.length;
+
+  if (direction === 'LONG') {
+    // Find most recent swing high before sweep
+    let swingHigh = -Infinity;
+    for (let i = 0; i < m - 2; i++) {
+      if (highs[i] > (highs[i-1] || 0) && highs[i] > highs[i+1]) swingHigh = Math.max(swingHigh, highs[i]);
+    }
+    // MSS confirmed if last close is above that swing high
+    const lastClose = closes[m - 1];
+    if (swingHigh > 0 && lastClose > swingHigh) {
+      return { confirmed: true, level: swingHigh, barsAgo: 0 };
+    }
+    // Near-MSS: within 0.1% of breaking it
+    if (swingHigh > 0 && lastClose > swingHigh * 0.999) {
+      return { confirmed: false, near: true, level: swingHigh };
+    }
+  } else {
+    // Find most recent swing low before sweep
+    let swingLow = Infinity;
+    for (let i = 1; i < m - 1; i++) {
+      if (lows[i] < lows[i-1] && lows[i] < lows[i+1]) swingLow = Math.min(swingLow, lows[i]);
+    }
+    const lastClose = closes[m - 1];
+    if (swingLow < Infinity && lastClose < swingLow) {
+      return { confirmed: true, level: swingLow, barsAgo: 0 };
+    }
+    if (swingLow < Infinity && lastClose < swingLow * 1.001) {
+      return { confirmed: false, near: true, level: swingLow };
+    }
+  }
+  return { confirmed: false, near: false, level: null };
+}
+
+// ══════════════════════════════════════════════
+// SESSION SWEEP DETECTOR
+// Did price sweep the Asian / London session
+// high or low within the last N candles?
+// Returns sweep details including which side,
+// price, and how many bars ago it happened.
+// ══════════════════════════════════════════════
+function detectSessionSweep(klines, sessions, lookbackBars = 6) {
+  const n = klines.length;
+  const price = parseFloat(klines[n-1][4]);
+  const recentBars = klines.slice(-lookbackBars);
+
+  const asian  = sessions.find(s => s.id === 'asian');
+  const london = sessions.find(s => s.id === 'london');
+  const ny     = sessions.find(s => s.id === 'ny');
+
+  const sweeps = [];
+
+  function checkSweep(session, label) {
+    if (!session || !session.high || !session.low) return;
+    // Check each recent bar to see if its wick exceeded session H/L
+    recentBars.forEach((bar, i) => {
+      const bHigh = parseFloat(bar[2]);
+      const bLow  = parseFloat(bar[3]);
+      const bClose = parseFloat(bar[4]);
+      const barsAgo = lookbackBars - 1 - i;
+
+      // Swept high: bar wick went above session high but CLOSED back below it (rejection)
+      if (bHigh > session.high && bClose < session.high) {
+        sweeps.push({
+          type: 'HIGH_SWEEP',
+          session: label,
+          level: session.high,
+          sweepHigh: bHigh,
+          barsAgo,
+          // After sweeping highs → expect SHORT (sell-side liquidity grab, price should fall)
+          impliedDirection: 'SHORT',
+          description: `${label} High swept at $${Math.round(session.high).toLocaleString()} — BSL grabbed, expect reversal SHORT`,
+        });
+      }
+      // Swept low: bar wick went below session low but CLOSED back above it (rejection)
+      if (bLow < session.low && bClose > session.low) {
+        sweeps.push({
+          type: 'LOW_SWEEP',
+          session: label,
+          level: session.low,
+          sweepLow: bLow,
+          barsAgo,
+          // After sweeping lows → expect LONG (buy-side liquidity grab, price should rise)
+          impliedDirection: 'LONG',
+          description: `${label} Low swept at $${Math.round(session.low).toLocaleString()} — SSL grabbed, expect reversal LONG`,
+        });
+      }
+    });
+  }
+
+  checkSweep(asian,  'Asian');
+  checkSweep(london, 'London');
+  checkSweep(ny,     'NY');
+
+  // Sort by most recent first
+  sweeps.sort((a, b) => a.barsAgo - b.barsAgo);
+  return sweeps;
+}
+
+// ══════════════════════════════════════════════
+// POST-SWEEP FVG DETECTOR
+// Only returns FVGs that formed AFTER the most
+// recent sweep — these are the highest probability
+// ICT entry zones, not random FVGs
+// ══════════════════════════════════════════════
+function detectPostSweepFVGs(klines, sweepBarsAgo, direction) {
+  // Only look at candles that formed after the sweep
+  const maxAge = sweepBarsAgo; // only FVGs newer than the sweep
+  const allFVGs = detectFVGs(klines, maxAge + 3);
+  return allFVGs.filter(f => {
+    if (direction === 'LONG')  return f.type === 'BULLISH' && f.age <= sweepBarsAgo;
+    if (direction === 'SHORT') return f.type === 'BEARISH' && f.age <= sweepBarsAgo;
+    return false;
+  });
+}
+
+// ══════════════════════════════════════════════
+// DRAW ON LIQUIDITY — where is price headed?
+// Identifies the most likely next target based
+// on where untouched liquidity pools sit
+// ══════════════════════════════════════════════
+function identifyDrawOnLiquidity(price, liq, prev, ivm, direction) {
+  const targets = [];
+
+  if (direction === 'LONG' || direction === 'WAIT') {
+    // Buy-side targets above price (in order of proximity)
+    if (liq.bsl.length) liq.bsl.forEach(b => targets.push({ price: b.price, label: 'BSL Equal Highs', priority: 1 }));
+    if (prev.PDH && prev.PDH > price) targets.push({ price: prev.PDH, label: 'PDH', priority: 2 });
+    if (prev.PWH && prev.PWH > price) targets.push({ price: prev.PWH, label: 'PWH', priority: 3 });
+    if (ivm && ivm.vah > price)       targets.push({ price: ivm.vah, label: 'VAH / D-VWAP', priority: 2 });
+  }
+  if (direction === 'SHORT' || direction === 'WAIT') {
+    // Sell-side targets below price
+    if (liq.ssl.length) liq.ssl.forEach(s => targets.push({ price: s.price, label: 'SSL Equal Lows', priority: 1 }));
+    if (prev.PDL && prev.PDL < price) targets.push({ price: prev.PDL, label: 'PDL', priority: 2 });
+    if (prev.PWL && prev.PWL < price) targets.push({ price: prev.PWL, label: 'PWL', priority: 3 });
+    if (ivm && ivm.val < price)       targets.push({ price: ivm.val, label: 'VAL / D-VWAP', priority: 2 });
+  }
+
+  if (!targets.length) return null;
+
+  if (direction === 'LONG') {
+    const abovePrice = targets.filter(t => t.price > price).sort((a, b) => a.price - b.price);
+    return abovePrice[0] || null;
+  } else if (direction === 'SHORT') {
+    const belowPrice = targets.filter(t => t.price < price).sort((a, b) => b.price - a.price);
+    return belowPrice[0] || null;
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════
+// ICT PROFESSIONAL ANALYSIS ENGINE
+//
+// The proper ICT sequence:
+// STEP 1 — HTF Bias (4H/Daily)
+//   → Is the higher timeframe bullish or bearish?
+//   → This determines which direction we ONLY trade
+//
+// STEP 2 — Draw on Liquidity
+//   → Where is price most likely going?
+//   → Identify nearest BSL (above) or SSL (below)
+//   → PDH, PDL, PWH, PWL, equal highs/lows
+//
+// STEP 3 — Killzone
+//   → Are we in London (02:00–05:00 UTC) or NY AM (07:00–10:00 UTC)?
+//   → These are the only windows worth trading
+//
+// STEP 4 — Session Sweep
+//   → Did price sweep the Asian / London session H or L?
+//   → Asian High sweep → SHORT setup
+//   → Asian Low sweep  → LONG setup
+//   → This is the TRIGGER — without a sweep, no entry
+//
+// STEP 5 — Market Structure Shift (MSS)
+//   → After the sweep, did price break a swing point
+//     in the opposite direction on 1H?
+//   → This CONFIRMS the reversal is real
+//
+// STEP 6 — Post-Sweep FVG
+//   → Find the first FVG that formed AFTER the sweep
+//     in the direction of the MSS
+//   → This is the ENTRY ZONE — not a random FVG
+//
+// STEP 7 — OTE Retracement
+//   → If no post-sweep FVG, use 62–79% Fibonacci
+//     retracement of the MSS swing as entry
+//
+// STEP 8 — SL below/above the sweep wick
+//   → Not below some arbitrary support
+//   → Specifically below the lowest wick of the sweep candle
+//
+// STEP 9 — TP at the Draw on Liquidity target
+//   → TP1 = nearest pool (BSL or SSL)
+//   → TP2 = PDH/PDL or next pool
 // ══════════════════════════════════════════════
 function calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h) {
-  const price    = analysis1h.price;
-  const pFmt     = v => '$' + Math.round(v).toLocaleString('en-US');
-  const distP    = (v, ref) => { const p = ((v-ref)/ref*100); return (p>=0?'+':'')+p.toFixed(2)+'%'; };
+  const price = analysis1h.price;
+  const pFmt  = v => '$' + Math.round(v).toLocaleString('en-US');
+  const distP = (v, ref) => { const p = ((v-ref)/ref*100); return (p>=0?'+':'')+p.toFixed(2)+'%'; };
+  const n = klines1h.length;
 
-  // 1. Killzone
-  const kz = getKillzoneStatus();
-
-  // 2. Premium / Discount
-  const pd = calcPremiumDiscount(klines1h, ivm);
-
-  // 3. HTF bias (4H determines direction)
+  // ══ STEP 1: HTF BIAS ══
   const htfBullish = analysis4h.label === 'BUY' || analysis4h.label === 'STRONG BUY';
   const htfBearish = analysis4h.label === 'SELL' || analysis4h.label === 'STRONG SELL';
   const htfNeutral = !htfBullish && !htfBearish;
+  const htfDirection = htfBullish ? 'LONG' : htfBearish ? 'SHORT' : 'NEUTRAL';
 
-  // 4. Previous levels
+  // ══ STEP 2: PREMIUM / DISCOUNT & DRAW ON LIQUIDITY ══
+  const pd  = calcPremiumDiscount(klines1h, ivm);
   const prev = calcPrevLevels(klines1h);
+  const liq  = detectLiquidityPools(klines1h, 48);
+  const allFVGs = detectFVGs(klines1h, 30);
+  const kz   = getKillzoneStatus();
 
-  // 5. Fair Value Gaps
-  const fvgs = detectFVGs(klines1h, 30);
-  const bullFVGs = fvgs.filter(f => f.type === 'BULLISH').slice(0, 3);
-  const bearFVGs = fvgs.filter(f => f.type === 'BEARISH').slice(0, 3);
+  // ══ STEP 3: SESSION SWEEPS ══
+  // Look back further during London/NY KZ when sweeps are expected
+  const sweepLookback = kz.live ? 8 : 4;
+  const sweeps = detectSessionSweep(klines1h, sessions, sweepLookback);
 
-  // 6. Liquidity pools
-  const liq = detectLiquidityPools(klines1h, 48);
+  // Most recent sweep that aligns with HTF bias
+  // e.g. if 4H is bullish, we want a LOW SWEEP (SSL grab → long)
+  // e.g. if 4H is bearish, we want a HIGH SWEEP (BSL grab → short)
+  let primarySweep = null;
+  if (!htfNeutral) {
+    const alignedSweeps = sweeps.filter(s =>
+      htfBullish ? s.impliedDirection === 'LONG' : s.impliedDirection === 'SHORT'
+    );
+    primarySweep = alignedSweeps.length ? alignedSweeps[0] : null;
+  }
+  // Even if HTF is neutral, show any sweep
+  if (!primarySweep && sweeps.length) primarySweep = sweeps[0];
 
-  // 7. Session context
-  const asianSession = sessions.find(s => s.id === 'asian');
-  const londonSession = sessions.find(s => s.id === 'london');
-
-  // ── DIRECTION DECISION ──
-  // ICT rule: trade in direction of HTF bias, only from discount (longs) or premium (shorts)
+  // ══ STEP 4: DIRECTION BASED ON SWEEP ══
+  // Professional rule: sweep defines direction, NOT indicator scores
   let direction = 'WAIT';
-  if (htfBullish && pd.pct <= 50)       direction = 'LONG';
-  else if (htfBearish && pd.pct >= 50)  direction = 'SHORT';
-  else if (htfBullish && pd.pct > 62.5) direction = 'WAIT'; // HTF bull but price in premium — wait for pullback
-  else if (htfBearish && pd.pct < 37.5) direction = 'WAIT'; // HTF bear but price in discount — wait for bounce
-  // Override: if 1H also strongly agrees, allow slightly off-zone
-  if (direction === 'WAIT' && htfBullish && analysis1h.label === 'STRONG BUY' && pd.pct < 60) direction = 'LONG';
-  if (direction === 'WAIT' && htfBearish && analysis1h.label === 'STRONG SELL' && pd.pct > 40) direction = 'SHORT';
+  let directionSource = 'none';
 
-  // ── ENTRY, SL, TP ──
-  let entryLo, entryHi, entryMid, sl, tp1, tp2, liqTarget, entryReason, slReason;
+  if (primarySweep) {
+    direction = primarySweep.impliedDirection;
+    directionSource = 'sweep';
+  } else if (!htfNeutral) {
+    // No sweep yet — use HTF + P/D as conditional wait
+    if (htfBullish && pd.pct <= 45)      { direction = 'LONG';  directionSource = 'htf+pd'; }
+    else if (htfBearish && pd.pct >= 55) { direction = 'SHORT'; directionSource = 'htf+pd'; }
+    else                                  { direction = 'WAIT';  directionSource = 'waiting_for_sweep'; }
+  }
+
+  // ══ STEP 5: MSS DETECTION ══
+  let mss = { confirmed: false, near: false, level: null };
+  if (primarySweep && direction !== 'WAIT') {
+    const sweepBarIdx = n - 1 - primarySweep.barsAgo;
+    mss = detectMSS(klines1h, direction, sweepBarIdx, 12);
+  }
+
+  // ══ STEP 6: POST-SWEEP FVG (Entry Zone) ══
+  let postSweepFVGs = [];
+  if (primarySweep && direction !== 'WAIT') {
+    postSweepFVGs = detectPostSweepFVGs(klines1h, primarySweep.barsAgo + 3, direction);
+  }
+
+  // ══ STEP 7: ENTRY ZONE ══
+  let entryLo, entryHi, entryMid, entryReason, entryQuality;
+
+  // Find the sweep candle's extreme wick for SL calculation
+  const sweepCandle = primarySweep ? klines1h[n - 1 - primarySweep.barsAgo] : null;
+  const sweepExtreme = sweepCandle
+    ? (direction === 'LONG' ? parseFloat(sweepCandle[3]) : parseFloat(sweepCandle[2]))
+    : null;
+
+  if (direction !== 'WAIT') {
+    const ote = calcOTE(klines1h, direction);
+
+    if (postSweepFVGs.length > 0) {
+      // BEST: Post-sweep FVG — highest probability ICT entry
+      const fvg = postSweepFVGs[0];
+      entryLo = fvg.bot; entryHi = fvg.top; entryMid = fvg.mid;
+      entryReason = `Post-sweep ${fvg.type === 'BULLISH' ? 'Bullish' : 'Bearish'} FVG (${fvg.age}h ago)`;
+      entryQuality = 'A+';
+    } else if (mss.confirmed) {
+      // GOOD: MSS confirmed, use OTE retracement zone
+      entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
+      entryReason = `OTE 62–79% fib after MSS at ${pFmt(mss.level)}`;
+      entryQuality = 'A';
+    } else if (primarySweep && !mss.confirmed) {
+      // CONDITIONAL: Sweep happened, waiting for MSS + FVG to form
+      // Show anticipated entry zone based on VWAP / VAL / VAH
+      if (direction === 'LONG' && ivm) {
+        entryLo = ivm.val * 0.999; entryHi = ivm.vwap * 1.001; entryMid = ivm.val;
+        entryReason = `Awaiting MSS + FVG — anticipate VAL ${pFmt(ivm.val)} area`;
+      } else if (direction === 'SHORT' && ivm) {
+        entryLo = ivm.vwap * 0.999; entryHi = ivm.vah * 1.001; entryMid = ivm.vah;
+        entryReason = `Awaiting MSS + FVG — anticipate VAH ${pFmt(ivm.vah)} area`;
+      } else {
+        entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
+        entryReason = `Awaiting MSS — OTE zone as guide ${pFmt(ote.lo)}–${pFmt(ote.hi)}`;
+      }
+      entryQuality = 'B';
+    } else if (directionSource === 'htf+pd') {
+      // WEAKEST: No sweep, just HTF+PD alignment — use OTE as guide only
+      entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
+      entryReason = `No sweep yet — HTF+PD guide: OTE ${pFmt(ote.lo)}–${pFmt(ote.hi)}`;
+      entryQuality = 'C';
+    } else {
+      entryLo = entryHi = entryMid = null;
+      entryReason = 'No valid entry zone'; entryQuality = null;
+    }
+  } else {
+    entryLo = entryHi = entryMid = null; entryReason = 'No setup'; entryQuality = null;
+  }
+
+  // ══ STEP 8: STOP LOSS ══
+  // ICT rule: SL goes beyond the sweep wick — not at an arbitrary level
+  let sl, slReason;
+  if (direction === 'LONG' && sweepExtreme) {
+    sl = sweepExtreme * 0.9985; // 0.15% below sweep wick low
+    slReason = `Below sweep wick ${pFmt(sweepExtreme)} + buffer`;
+  } else if (direction === 'SHORT' && sweepExtreme) {
+    sl = sweepExtreme * 1.0015; // 0.15% above sweep wick high
+    slReason = `Above sweep wick ${pFmt(sweepExtreme)} + buffer`;
+  } else if (direction === 'LONG') {
+    sl = analysis1h.support * 0.997;
+    slReason = `Below structure low ${pFmt(analysis1h.support)}`;
+  } else if (direction === 'SHORT') {
+    sl = analysis1h.resistance * 1.003;
+    slReason = `Above structure high ${pFmt(analysis1h.resistance)}`;
+  } else {
+    sl = null; slReason = '';
+  }
+
+  // ══ STEP 9: TAKE PROFIT (Draw on Liquidity targets) ══
+  const dol = identifyDrawOnLiquidity(price, liq, prev, ivm, direction);
+  let tp1, tp2, liqTarget, tp1Label;
 
   if (direction === 'LONG') {
-    // Priority: nearest bullish FVG below price → then OTE zone → then VAL / VWAP
-    const nearFVG = bullFVGs.find(f => f.top < price);
-    const ote = calcOTE(klines1h, 'LONG');
-    if (nearFVG) {
-      entryLo = nearFVG.bot; entryHi = nearFVG.top; entryMid = nearFVG.mid;
-      entryReason = `Bullish FVG ${pFmt(nearFVG.bot)}–${pFmt(nearFVG.top)}`;
-    } else if (ivm && ivm.val < price) {
-      entryLo = ivm.val * 0.999; entryHi = ivm.val * 1.002; entryMid = ivm.val;
-      entryReason = `VAL / D-VWAP support ${pFmt(ivm.val)}`;
-    } else {
-      entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
-      entryReason = `OTE zone ${pFmt(ote.lo)}–${pFmt(ote.hi)}`;
-    }
-    // SL: below nearest SSL or swing low
-    const nearSSL = liq.ssl[0];
-    sl = nearSSL ? nearSSL.price * 0.998 : analysis1h.support * 0.997;
-    slReason = nearSSL ? `Below SSL ${pFmt(nearSSL.price)}` : `Below structure ${pFmt(analysis1h.support)}`;
-    // TP1: nearest BSL (buy-side liquidity) or PDH or VAH
-    const bslTarget = liq.bsl[0];
-    tp1 = bslTarget ? bslTarget.price : (prev.PDH && prev.PDH > price ? prev.PDH : (ivm ? ivm.vah : analysis1h.resistance));
-    tp2 = (prev.PDH && prev.PDH > tp1) ? prev.PDH : analysis1h.resistance;
-    liqTarget = liq.bsl.length ? liq.bsl[liq.bsl.length - 1].price : analysis1h.resistance;
+    // TP1: nearest BSL, or session high, or PDH
+    const asianHigh = sessions.find(s => s.id === 'asian')?.high;
+    const londonHigh = sessions.find(s => s.id === 'london')?.high;
+    const bslNear = liq.bsl.find(b => b.price > price);
+    if (bslNear)                              { tp1 = bslNear.price;  tp1Label = 'BSL Equal Highs'; }
+    else if (asianHigh && asianHigh > price)  { tp1 = asianHigh;     tp1Label = 'Asian Session High'; }
+    else if (londonHigh && londonHigh > price){ tp1 = londonHigh;    tp1Label = 'London Session High'; }
+    else if (prev.PDH && prev.PDH > price)    { tp1 = prev.PDH;      tp1Label = 'PDH'; }
+    else if (ivm)                             { tp1 = ivm.vah;       tp1Label = 'VAH / D-VWAP'; }
+    else                                      { tp1 = analysis1h.resistance; tp1Label = 'Resistance'; }
+    tp2 = (prev.PDH && prev.PDH > tp1) ? prev.PDH : (dol ? dol.price : analysis1h.resistance);
+    liqTarget = dol ? dol.price : tp2;
   } else if (direction === 'SHORT') {
-    const nearFVG = bearFVGs.find(f => f.bot > price);
-    const ote = calcOTE(klines1h, 'SHORT');
-    if (nearFVG) {
-      entryLo = nearFVG.bot; entryHi = nearFVG.top; entryMid = nearFVG.mid;
-      entryReason = `Bearish FVG ${pFmt(nearFVG.bot)}–${pFmt(nearFVG.top)}`;
-    } else if (ivm && ivm.vah > price) {
-      entryLo = ivm.vah * 0.999; entryHi = ivm.vah * 1.002; entryMid = ivm.vah;
-      entryReason = `VAH / D-VWAP resistance ${pFmt(ivm.vah)}`;
-    } else {
-      entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
-      entryReason = `OTE zone ${pFmt(ote.lo)}–${pFmt(ote.hi)}`;
-    }
-    const nearBSL = liq.bsl[0];
-    sl = nearBSL ? nearBSL.price * 1.002 : analysis1h.resistance * 1.003;
-    slReason = nearBSL ? `Above BSL ${pFmt(nearBSL.price)}` : `Above structure ${pFmt(analysis1h.resistance)}`;
-    const sslTarget = liq.ssl[0];
-    tp1 = sslTarget ? sslTarget.price : (prev.PDL && prev.PDL < price ? prev.PDL : (ivm ? ivm.val : analysis1h.support));
-    tp2 = (prev.PDL && prev.PDL < tp1) ? prev.PDL : analysis1h.support;
-    liqTarget = liq.ssl.length ? liq.ssl[liq.ssl.length - 1].price : analysis1h.support;
+    const asianLow  = sessions.find(s => s.id === 'asian')?.low;
+    const londonLow = sessions.find(s => s.id === 'london')?.low;
+    const sslNear = liq.ssl.find(s => s.price < price);
+    if (sslNear)                              { tp1 = sslNear.price;  tp1Label = 'SSL Equal Lows'; }
+    else if (asianLow && asianLow < price)    { tp1 = asianLow;      tp1Label = 'Asian Session Low'; }
+    else if (londonLow && londonLow < price)  { tp1 = londonLow;     tp1Label = 'London Session Low'; }
+    else if (prev.PDL && prev.PDL < price)    { tp1 = prev.PDL;      tp1Label = 'PDL'; }
+    else if (ivm)                             { tp1 = ivm.val;       tp1Label = 'VAL / D-VWAP'; }
+    else                                      { tp1 = analysis1h.support; tp1Label = 'Support'; }
+    tp2 = (prev.PDL && prev.PDL < tp1) ? prev.PDL : (dol ? dol.price : analysis1h.support);
+    liqTarget = dol ? dol.price : tp2;
   } else {
-    entryLo = entryHi = entryMid = sl = tp1 = tp2 = liqTarget = null;
-    entryReason = 'No setup'; slReason = '';
+    tp1 = tp2 = liqTarget = null; tp1Label = '';
   }
 
   const rr = (tp1 && entryMid && sl) ? Math.abs(tp1 - entryMid) / Math.abs(entryMid - sl) : null;
 
-  // ── CONFLUENCE CHECKLIST (7 items) ──
+  // ══ PROFESSIONAL CONFLUENCE CHECKLIST (9 items) ══
+  const sweepAligned = primarySweep && (htfNeutral || primarySweep.impliedDirection === htfDirection);
+  const bullFVGs = allFVGs.filter(f => f.type === 'BULLISH');
+  const bearFVGs = allFVGs.filter(f => f.type === 'BEARISH');
+
   const checklist = [
     {
-      label: 'HTF Bias (4H)',
+      label: '① HTF Bias (4H)',
       pass: !htfNeutral,
-      val: analysis4h.label,
+      val: htfNeutral ? 'NEUTRAL — no bias' : `4H ${analysis4h.label}`,
       color: htfBullish ? 'var(--green)' : htfBearish ? 'var(--red)' : 'var(--muted)',
+      note: 'Defines which direction to ONLY trade today',
     },
     {
-      label: 'Price in Correct Zone',
-      pass: direction !== 'WAIT',
-      val: direction === 'LONG' ? 'Discount ✓' : direction === 'SHORT' ? 'Premium ✓' : `${pd.pct.toFixed(0)}% — wait`,
-      color: direction !== 'WAIT' ? 'var(--green)' : 'var(--orange)',
+      label: '② Draw on Liquidity',
+      pass: !!(dol),
+      val: dol ? `${dol.label} @ ${pFmt(dol.price)}` : 'No clear target',
+      color: dol ? 'var(--gold)' : 'var(--muted)',
+      note: 'Where is price drawn toward? This is your TP',
     },
     {
-      label: 'Active Killzone',
+      label: '③ Active Killzone',
       pass: kz.live && kz.name !== 'NY Lunch',
-      val: kz.live ? kz.name : 'Outside KZ',
+      val: kz.live ? `${kz.name} · ${kz.minsLeft}min left` : `Next: ${kz.nextName} in ${kz.minsUntil || '?'}min`,
       color: kz.live && kz.name !== 'NY Lunch' ? 'var(--accent)' : 'var(--muted)',
+      note: 'Only trade London (02–05 UTC) or NY AM (07–10 UTC)',
     },
     {
-      label: 'Fair Value Gap Present',
-      pass: direction === 'LONG' ? bullFVGs.length > 0 : direction === 'SHORT' ? bearFVGs.length > 0 : false,
-      val: direction === 'LONG' ? (bullFVGs.length ? `${bullFVGs.length} bullish FVG` : 'None nearby') : direction === 'SHORT' ? (bearFVGs.length ? `${bearFVGs.length} bearish FVG` : 'None nearby') : '—',
-      color: (direction === 'LONG' && bullFVGs.length) || (direction === 'SHORT' && bearFVGs.length) ? 'var(--green)' : 'var(--muted)',
+      label: '④ Session Sweep (Trigger)',
+      pass: !!primarySweep,
+      val: primarySweep ? `${primarySweep.session} ${primarySweep.type === 'HIGH_SWEEP' ? 'High' : 'Low'} swept ${primarySweep.barsAgo}h ago` : 'No sweep detected',
+      color: primarySweep ? 'var(--gold)' : 'var(--muted)',
+      note: 'THE trigger — no sweep = no entry, period',
     },
     {
-      label: 'Liquidity Sweep (SSL/BSL)',
-      pass: direction === 'LONG' ? liq.ssl.length > 0 : liq.bsl.length > 0,
-      val: direction === 'LONG' ? (liq.ssl.length ? `SSL ${pFmt(liq.ssl[0].price)}` : 'No SSL') : (liq.bsl.length ? `BSL ${pFmt(liq.bsl[0].price)}` : 'No BSL'),
-      color: (direction === 'LONG' && liq.ssl.length) || (direction === 'SHORT' && liq.bsl.length) ? 'var(--gold)' : 'var(--muted)',
+      label: '⑤ Sweep Aligns HTF Bias',
+      pass: !!(primarySweep && (htfNeutral || sweepAligned)),
+      val: primarySweep
+        ? (sweepAligned || htfNeutral)
+          ? `${primarySweep.impliedDirection} aligns with 4H ✓`
+          : `${primarySweep.impliedDirection} vs 4H ${htfDirection} — conflict`
+        : '—',
+      color: (primarySweep && (sweepAligned || htfNeutral)) ? 'var(--green)' : 'var(--red)',
+      note: 'Sweep direction must match HTF — no counter-trend trades',
     },
     {
-      label: 'PDH/PDL Respected',
+      label: '⑥ Market Structure Shift',
+      pass: mss.confirmed,
+      val: mss.confirmed ? `MSS confirmed at ${pFmt(mss.level)}` : mss.near ? `Near MSS at ${pFmt(mss.level)} — watch` : 'No MSS yet',
+      color: mss.confirmed ? 'var(--green)' : mss.near ? 'var(--orange)' : 'var(--muted)',
+      note: 'Break of swing structure after sweep = reversal confirmed',
+    },
+    {
+      label: '⑦ Post-Sweep FVG (Entry)',
+      pass: postSweepFVGs.length > 0,
+      val: postSweepFVGs.length ? `${postSweepFVGs.length} FVG — entry at ${pFmt(postSweepFVGs[0].mid)}` : allFVGs.length ? `${allFVGs.length} FVG (pre-sweep)` : 'No FVG found',
+      color: postSweepFVGs.length ? 'var(--green)' : allFVGs.length ? 'var(--orange)' : 'var(--muted)',
+      note: 'Post-sweep FVG is the precision entry — not just any FVG',
+    },
+    {
+      label: '⑧ Price in Correct Zone',
+      pass: (direction === 'LONG' && pd.pct <= 50) || (direction === 'SHORT' && pd.pct >= 50),
+      val: `${pd.pct.toFixed(1)}% — ${pd.pct >= 62.5 ? 'Premium' : pd.pct <= 37.5 ? 'Discount' : 'Equilibrium'}`,
+      color: (direction === 'LONG' && pd.pct <= 50) || (direction === 'SHORT' && pd.pct >= 50) ? 'var(--green)' : 'var(--orange)',
+      note: 'Buy discount (<50%), sell premium (>50%) of daily range',
+    },
+    {
+      label: '⑨ PDH / PDL Respected',
       pass: !!(prev.PDH && prev.PDL),
-      val: prev.PDH ? `PDH ${pFmt(prev.PDH)} · PDL ${pFmt(prev.PDL)}` : 'No prev data',
+      val: prev.PDH ? `PDH ${pFmt(prev.PDH)} · PDL ${pFmt(prev.PDL)}` : 'Insufficient history',
       color: prev.PDH ? 'var(--accent)' : 'var(--muted)',
-    },
-    {
-      label: '1H Momentum Aligned',
-      pass: (direction === 'LONG' && (analysis1h.label === 'BUY' || analysis1h.label === 'STRONG BUY')) ||
-            (direction === 'SHORT' && (analysis1h.label === 'SELL' || analysis1h.label === 'STRONG SELL')),
-      val: analysis1h.label,
-      color: (analysis1h.label.includes('BUY') && direction === 'LONG') || (analysis1h.label.includes('SELL') && direction === 'SHORT') ? 'var(--green)' : 'var(--orange)',
+      note: 'Price respects previous day levels — key institutional magnets',
     },
   ];
 
   const passCount = checklist.filter(c => c.pass).length;
 
-  // ── COMPOSITE SCORE ──
+  // ══ COMPOSITE SCORE ══
+  // Weighted: sweep + MSS + FVG are the critical items
   let score = 0;
-  score += htfBullish || htfBearish ? 0.20 : 0;
-  score += direction !== 'WAIT' ? 0.20 : 0;
-  score += (kz.live && kz.name !== 'NY Lunch') ? 0.15 : 0;
-  score += ((direction === 'LONG' && bullFVGs.length) || (direction === 'SHORT' && bearFVGs.length)) ? 0.15 : 0;
-  score += passCount / 7 * 0.30;
-  const scorePct = Math.round(score * 100);
+  if (!htfNeutral)                                              score += 0.10;
+  if (dol)                                                      score += 0.05;
+  if (kz.live && kz.name !== 'NY Lunch')                       score += 0.10;
+  if (primarySweep)                                             score += 0.20; // sweep is the trigger
+  if (primarySweep && (sweepAligned || htfNeutral))             score += 0.15; // alignment doubles value
+  if (mss.confirmed)                                            score += 0.20; // MSS confirms reversal
+  if (postSweepFVGs.length)                                     score += 0.15; // FVG = precision entry
+  if ((direction === 'LONG' && pd.pct <= 50) || (direction === 'SHORT' && pd.pct >= 50)) score += 0.05;
+  const scorePct = Math.round(Math.min(score, 1) * 100);
 
-  // ── ACTION ──
+  // ══ ACTION DECISION ══
+  // Professional rule: you need the FULL sequence to trade
+  // Sweep alone = watch. Sweep + MSS = prepare. Sweep + MSS + FVG = enter.
   let action, ictColor, isStrong = false;
-  if (direction === 'WAIT' || passCount < 3)   { action = 'WAIT / FLAT'; ictColor = '#90a4ae'; }
-  else if (direction === 'LONG' && passCount >= 6)  { action = 'STRONG BUY'; ictColor = '#00e676'; isStrong = true; }
-  else if (direction === 'LONG' && passCount >= 4)  { action = 'BUY'; ictColor = '#69f0ae'; }
-  else if (direction === 'SHORT' && passCount >= 6) { action = 'STRONG SELL'; ictColor = '#ff3d5a'; isStrong = true; }
-  else if (direction === 'SHORT' && passCount >= 4) { action = 'SELL'; ictColor = '#ff6e6e'; }
-  else { action = 'WAIT / FLAT'; ictColor = '#90a4ae'; }
+  const hasTrigger   = !!primarySweep && (htfNeutral || sweepAligned);
+  const hasConfirm   = mss.confirmed;
+  const hasEntry     = postSweepFVGs.length > 0 || (mss.confirmed && entryMid);
+  const inKillzone   = kz.live && kz.name !== 'NY Lunch';
 
-  // ── REASONING ──
+  if (!hasTrigger) {
+    action = 'WAIT / FLAT'; ictColor = '#90a4ae';
+  } else if (hasTrigger && !hasConfirm) {
+    // Sweep happened but no MSS yet — alert state
+    action = direction === 'LONG' ? 'WATCH LONG' : 'WATCH SHORT';
+    ictColor = direction === 'LONG' ? '#ffd54f' : '#ff9100';
+  } else if (hasTrigger && hasConfirm && !postSweepFVGs.length) {
+    // MSS confirmed but no FVG yet — prepare
+    action = direction === 'LONG' ? 'PREPARE LONG' : 'PREPARE SHORT';
+    ictColor = direction === 'LONG' ? '#69f0ae' : '#ff6e6e';
+  } else if (hasTrigger && hasConfirm && postSweepFVGs.length && inKillzone) {
+    // Full sequence in killzone — EXECUTE
+    action = direction === 'LONG' ? 'STRONG BUY' : 'STRONG SELL';
+    ictColor = direction === 'LONG' ? '#00e676' : '#ff3d5a';
+    isStrong = true;
+  } else if (hasTrigger && hasConfirm && postSweepFVGs.length) {
+    // Full sequence but outside killzone — valid but lower priority
+    action = direction === 'LONG' ? 'BUY' : 'SELL';
+    ictColor = direction === 'LONG' ? '#69f0ae' : '#ff6e6e';
+  } else {
+    action = 'WAIT / FLAT'; ictColor = '#90a4ae';
+  }
+
+  // ══ PROFESSIONAL REASONING ══
   let reasoning = '';
+  const kzStr = kz.live ? `<b>✓ ${kz.name} active</b> (${kz.minsLeft}min left).` : `⚠ Outside killzone — next <b>${kz.nextName}</b> in ${kz.minsUntil}min.`;
+  const htfStr = `4H is <b>${htfNeutral ? 'NEUTRAL' : (htfBullish ? 'BULLISH' : 'BEARISH')}</b>.`;
+  const pdStr  = `Price at <b>${pd.pct.toFixed(1)}%</b> of daily range (${pd.css === 'bias-premium' ? 'Premium' : pd.css === 'bias-discount' ? 'Discount' : 'Equilibrium'}).`;
+
   if (action === 'WAIT / FLAT') {
-    let waitReason = '';
-    if (htfNeutral) waitReason = `4H is <b>NEUTRAL</b> — no clear HTF bias. ICT requires a defined directional draw before entry.`;
-    else if (direction === 'WAIT' && htfBullish) waitReason = `4H is <b>BULLISH</b> but price is at <b>${pd.pct.toFixed(0)}% (Premium)</b> — too expensive to buy. Wait for pullback to discount (below 50%).`;
-    else if (direction === 'WAIT' && htfBearish) waitReason = `4H is <b>BEARISH</b> but price is at <b>${pd.pct.toFixed(0)}% (Discount)</b> — too low to short. Wait for bounce to premium (above 50%).`;
-    else waitReason = `Only <b>${passCount}/7</b> confluence factors confirmed. Need ≥4 for a valid ICT setup.`;
-    if (!kz.live) waitReason += ` Also outside killzone — next is <b>${kz.nextName}</b> in ${kz.minsUntil}min.`;
-    reasoning = `<b>No trade — stay flat.</b> ${waitReason}`;
+    if (htfNeutral)
+      reasoning = `<b>WAIT — no HTF bias.</b> 4H has no directional conviction. ICT requires a clear draw on liquidity before any entry. Check back at next killzone.`;
+    else if (!primarySweep && directionSource === 'waiting_for_sweep')
+      reasoning = `<b>WAIT — no session sweep yet.</b> ${htfStr} ${pdStr} Price has not swept any session high or low — the key trigger is missing. ${kzStr} Watch the <b>Asian H/L</b> (see Session Levels panel). The moment London sweeps those levels and rejects, that's your signal.`;
+    else if (!primarySweep)
+      reasoning = `<b>WAIT.</b> ${htfStr} ${pdStr} No session sweep detected. ${kzStr}`;
+    else if (primarySweep && !sweepAligned && !htfNeutral)
+      reasoning = `<b>WAIT — sweep conflicts HTF bias.</b> ${primarySweep.description} but 4H is <b>${htfDirection}</b>. Counter-trend trades have low probability — skip this setup.`;
+    else
+      reasoning = `<b>WAIT — incomplete sequence.</b> ${passCount}/9 checks passed. ${kzStr}`;
+  } else if (action.includes('WATCH')) {
+    reasoning = `<b>⚡ SWEEP DETECTED — watch for MSS.</b> ${primarySweep.description}. ${htfStr} ${kzStr} <b>Next step:</b> wait for price to break a swing high (if long) or swing low (if short) on the 1H chart — that's your Market Structure Shift confirmation. Do NOT enter yet.`;
+  } else if (action.includes('PREPARE')) {
+    reasoning = `<b>⚡ MSS CONFIRMED at ${pFmt(mss.level)} — prepare entry.</b> Sweep + structure shift complete. ${kzStr} ${pdStr} <b>Next step:</b> wait for price to retrace into the first FVG or OTE zone (${pFmt(entryLo)}–${pFmt(entryHi)}) before pressing the button. Entry: <b>${entryReason}</b>.`;
   } else {
     const dir = direction === 'LONG' ? '↑ LONG' : '↓ SHORT';
-    const kzNote = kz.live ? `<b>Active killzone: ${kz.name}</b> — high probability window.` : `⚠ Outside killzone — next <b>${kz.nextName}</b> in ${kz.minsUntil}min. Consider waiting.`;
-    const pdNote = `Price at <b>${pd.pct.toFixed(0)}%</b> of daily range (${pd.label.split(' ')[0]}).`;
-    const entNote = entryMid ? `Entry: <b>${pFmt(entryLo)}–${pFmt(entryHi)}</b> (${entryReason}).` : '';
-    const slNote  = sl ? `SL: <b>${pFmt(sl)}</b> — ${slReason}.` : '';
-    const tp1Note = tp1 ? `TP1: <b>${pFmt(tp1)}</b>${rr ? ` (1:${rr.toFixed(1)} R)` : ''}.` : '';
-    const tp2Note = tp2 ? ` TP2: <b>${pFmt(tp2)}</b>.` : '';
-    const liqNote = liqTarget ? ` Draw on liquidity toward <b>${pFmt(liqTarget)}</b>.` : '';
-    const prevNote = prev.PDH ? ` PDH <b>${pFmt(prev.PDH)}</b> · PDL <b>${pFmt(prev.PDL)}</b> — key magnets.` : '';
-    reasoning = `<b>${dir} setup — ${passCount}/7 confluence.</b> ${kzNote} ${pdNote} ${entNote} ${slNote} ${tp1Note}${tp2Note}${liqNote}${prevNote}`;
+    const rrStr = rr ? ` (<b>1:${rr.toFixed(1)} R</b>)` : '';
+    reasoning = `<b>${dir} — Full ICT sequence confirmed.</b> ${kzStr} ${htfStr} ${pdStr} `
+      + `<b>Sweep:</b> ${primarySweep.description}. `
+      + `<b>MSS:</b> confirmed at ${pFmt(mss.level)}. `
+      + `<b>Entry:</b> ${entryReason} — zone ${pFmt(entryLo)}–${pFmt(entryHi)}. `
+      + `<b>SL:</b> ${pFmt(sl)} (${slReason}). `
+      + `<b>TP1:</b> ${pFmt(tp1)} — ${tp1Label}${rrStr}. `
+      + (tp2 ? `<b>TP2:</b> ${pFmt(tp2)}. ` : '')
+      + (liqTarget ? `<b>Draw on liquidity:</b> ${pFmt(liqTarget)}.` : '');
   }
 
   return {
     action, ictColor, isStrong, scorePct, direction, passCount,
-    kz, pd, prev, fvgs, bullFVGs, bearFVGs, liq, checklist,
-    entryLo, entryHi, entryMid, sl, tp1, tp2, liqTarget, rr,
+    kz, pd, prev, fvgs: allFVGs, bullFVGs, bearFVGs, liq, checklist,
+    entryLo, entryHi, entryMid, entryQuality, sl, tp1, tp2, liqTarget, tp1Label, rr,
     entryReason, slReason, reasoning,
+    sweeps, primarySweep, mss, postSweepFVGs, dol,
+    htfBullish, htfBearish, htfNeutral, htfDirection,
   };
 }
 
@@ -3393,6 +3744,211 @@ function calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h) {
 function updateICTPanel(ict) {
   const pFmt  = v => '$' + Math.round(v).toLocaleString('en-US');
   const distP = (v, ref) => { const p = ((v-ref)/ref*100); return (p>=0?'+':'')+p.toFixed(2)+'%'; };
+
+  // Panel border color
+  const panel = document.getElementById('ict-panel');
+  panel.style.setProperty('--ict-color', ict.ictColor);
+  panel.className = 'ict-panel' + (ict.isStrong ? ' strong' : '');
+
+  // Timestamp
+  document.getElementById('ict-time').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  // Killzone badge
+  const kzBadge = document.getElementById('kz-badge');
+  if (ict.kz.live) {
+    kzBadge.textContent = '● ' + ict.kz.name;
+    kzBadge.className = 'kz-badge kz-live';
+    kzBadge.style.color = ict.kz.color;
+    kzBadge.style.borderColor = ict.kz.color;
+    kzBadge.style.background = ict.kz.color + '18';
+    document.getElementById('kz-countdown').innerHTML = `<b>${ict.kz.minsLeft}min left</b> · ${ict.kz.desc}`;
+  } else {
+    kzBadge.textContent = '◌ NO KILLZONE';
+    kzBadge.className = 'kz-badge kz-dead';
+    kzBadge.style.color = ''; kzBadge.style.borderColor = ''; kzBadge.style.background = '';
+    document.getElementById('kz-countdown').innerHTML = `Next: <b>${ict.kz.nextName}</b> in ${ict.kz.minsUntil}min`;
+  }
+
+  // Sweep status badge (show prominently if sweep detected)
+  const sweepEl = document.getElementById('sweep-status');
+  if (sweepEl) {
+    if (ict.primarySweep) {
+      const s = ict.primarySweep;
+      const sweepColor = s.impliedDirection === 'LONG' ? 'var(--green)' : 'var(--red)';
+      sweepEl.style.display = 'flex';
+      sweepEl.innerHTML = `
+        <span style="font-size:1rem;">⚡</span>
+        <span style="font-size:0.68rem;line-height:1.5;color:var(--text);">
+          <b style="color:${sweepColor};">${s.type === 'HIGH_SWEEP' ? '↓ BSL GRABBED' : '↑ SSL GRABBED'}</b>
+          — ${s.session} ${s.type === 'HIGH_SWEEP' ? 'High' : 'Low'} swept
+          <b>${s.barsAgo === 0 ? 'this bar' : s.barsAgo + 'h ago'}</b> at
+          <b style="color:${sweepColor};">${pFmt(s.level)}</b>.
+          Implied direction: <b style="color:${sweepColor};">${s.impliedDirection}</b>
+        </span>
+        <span style="font-family:'Space Mono',monospace;font-size:0.6rem;padding:2px 8px;border-radius:4px;background:${s.impliedDirection==='LONG'?'rgba(0,230,118,0.12)':'rgba(255,61,90,0.12)'};color:${sweepColor};border:1px solid ${sweepColor}40;flex-shrink:0;">${ict.mss.confirmed ? '✓ MSS' : ict.mss.near ? '~ MSS?' : '⏳ MSS?'}</span>
+      `;
+    } else {
+      sweepEl.style.display = 'none';
+    }
+  }
+
+  // Premium/discount bias pill
+  const pdPill = document.getElementById('pd-bias-pill');
+  pdPill.textContent = ict.pd.label.split(' ')[0].toUpperCase();
+  pdPill.className = 'bias-pill ' + ict.pd.css;
+
+  // PD gauge
+  const thumbPct = Math.max(2, Math.min(98, ict.pd.pct));
+  document.getElementById('pd-thumb').style.left = thumbPct + '%';
+  const pdLabel = document.getElementById('pd-value-label');
+  const pdColor = ict.pd.css === 'bias-premium' ? 'var(--red)' : ict.pd.css === 'bias-discount' ? 'var(--green)' : 'var(--gold)';
+  pdLabel.innerHTML = `Price at <b style="color:${pdColor}">${ict.pd.pct.toFixed(1)}%</b> of daily range — ${ict.pd.label}`;
+
+  // Action badge — color-coded including new states
+  const actionEl = document.getElementById('ict-action');
+  actionEl.textContent = ict.action;
+  actionEl.style.color = ict.ictColor;
+  actionEl.style.fontSize = ict.action.length > 10 ? '0.9rem' : '1.2rem';
+
+  document.getElementById('ict-score-val').textContent = ict.scorePct + '%';
+  document.getElementById('ict-mini-fill').style.width = ict.scorePct + '%';
+  document.getElementById('ict-mini-fill').style.background = ict.ictColor;
+
+  // Pills
+  const sweepPill = ict.primarySweep
+    ? `<span class="cmd-pill active-pill" style="--cmd-color:${ict.ictColor}">⚡ ${ict.primarySweep.session} Sweep</span>`
+    : `<span class="cmd-pill">No Sweep</span>`;
+  const mssPill = ict.mss.confirmed
+    ? `<span class="cmd-pill active-pill" style="--cmd-color:${ict.ictColor}">✓ MSS</span>`
+    : ict.mss.near
+      ? `<span class="cmd-pill" style="color:var(--orange)">~ MSS?</span>`
+      : `<span class="cmd-pill">No MSS</span>`;
+  const fvgPill = ict.postSweepFVGs.length
+    ? `<span class="cmd-pill active-pill" style="--cmd-color:${ict.ictColor}">FVG ✓ A+</span>`
+    : ict.fvgs.length
+      ? `<span class="cmd-pill" style="color:var(--orange)">FVG (pre-sweep)</span>`
+      : `<span class="cmd-pill">No FVG</span>`;
+  const kzPill = ict.kz.live
+    ? `<span class="cmd-pill active-pill" style="--cmd-color:${ict.ictColor}">${ict.kz.name}</span>`
+    : `<span class="cmd-pill">No KZ</span>`;
+  const checkPill = `<span class="cmd-pill${ict.passCount >= 6 ? ' active-pill' : ''}" style="${ict.passCount >= 6 ? '--cmd-color:'+ict.ictColor : ''}">${ict.passCount}/9</span>`;
+  document.getElementById('ict-pills').innerHTML = sweepPill + mssPill + fvgPill + kzPill + checkPill;
+
+  // Trade levels
+  const price = lastPrice;
+  if (ict.entryMid && ict.direction !== 'WAIT') {
+    document.getElementById('ict-entry').textContent = `${pFmt(ict.entryLo)}–${pFmt(ict.entryHi)}`;
+    const qualityColor = ict.entryQuality === 'A+' ? 'var(--green)' : ict.entryQuality === 'A' ? '#69f0ae' : ict.entryQuality === 'B' ? 'var(--orange)' : 'var(--muted)';
+    document.getElementById('ict-entry').style.color = qualityColor;
+    document.getElementById('ict-entry-sub').textContent = (ict.entryQuality ? `[${ict.entryQuality}] ` : '') + ict.entryReason;
+    document.getElementById('ict-sl').textContent = pFmt(ict.sl);
+    document.getElementById('ict-sl-sub').textContent = ict.slReason;
+    document.getElementById('ict-tp1').textContent = ict.tp1 ? pFmt(ict.tp1) : '—';
+    document.getElementById('ict-tp1-sub').textContent = ict.tp1Label || '1st target';
+    document.getElementById('ict-tp2').textContent = ict.tp2 ? pFmt(ict.tp2) : '—';
+    document.getElementById('ict-tp2-sub').textContent = '2nd target';
+    document.getElementById('ict-liq-target').textContent = ict.liqTarget ? pFmt(ict.liqTarget) : '—';
+    document.getElementById('ict-liq-target').style.color = 'var(--gold)';
+    document.getElementById('ict-rr').textContent = ict.rr ? '1 : ' + ict.rr.toFixed(2) : '—';
+    const rrQual = ict.rr >= 3 ? '✦ Excellent' : ict.rr >= 2 ? '✓ Good' : ict.rr >= 1.5 ? 'Acceptable' : '⚠ Low';
+    document.getElementById('ict-rr-sub').textContent = ict.rr ? rrQual : '';
+    document.getElementById('ict-rr').style.color = ict.rr >= 2 ? 'var(--green)' : ict.rr >= 1.5 ? 'var(--gold)' : 'var(--orange)';
+  } else {
+    ['ict-entry','ict-sl','ict-tp1','ict-tp2','ict-liq-target','ict-rr'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('ict-entry').style.color = 'var(--accent)';
+    document.getElementById('ict-entry-sub').textContent = 'Waiting for sweep + MSS';
+    document.getElementById('ict-sl-sub').textContent = '';
+    document.getElementById('ict-tp1-sub').textContent = ict.dol ? `Draw: ${pFmt(ict.dol.price)} (${ict.dol.label})` : '';
+    document.getElementById('ict-tp2-sub').textContent = '';
+    document.getElementById('ict-rr-sub').textContent = '';
+  }
+
+  // Reasoning
+  const reasonEl = document.getElementById('ict-reasoning');
+  reasonEl.innerHTML = ict.reasoning;
+  reasonEl.style.borderLeftColor = ict.ictColor;
+  reasonEl.querySelectorAll('b').forEach(b => { if (!b.style.color) b.style.color = ict.ictColor; });
+
+  // Checklist — now 9 items with notes
+  document.getElementById('ict-check-score').textContent = ict.passCount + '/9';
+  document.getElementById('ict-checklist').innerHTML = ict.checklist.map(c => `
+    <div class="ict-check-row" style="${c.pass ? 'border-color:'+ict.ictColor+'30' : ''}">
+      <span class="ict-check-icon" style="color:${c.pass ? ict.ictColor : 'var(--muted)'};">${c.pass ? '✓' : '○'}</span>
+      <div style="flex:1;">
+        <div class="ict-check-label" style="color:${c.pass ? 'var(--text)' : 'var(--muted)'};">${c.label}</div>
+        ${c.note ? `<div style="font-size:0.55rem;color:var(--muted);margin-top:1px;">${c.note}</div>` : ''}
+      </div>
+      <span class="ict-check-val" style="color:${c.color};">${c.val}</span>
+    </div>
+  `).join('');
+
+  // PDH/PDL/PWH/PWL
+  const { PDH, PDL, PWH, PWL } = ict.prev;
+  const pdLevels = [
+    PDH ? { tag: 'Prev Day High (PDH)', price: PDH, color: '#ff6e6e', dist: distP(PDH, price) } : null,
+    PDL ? { tag: 'Prev Day Low (PDL)',  price: PDL, color: '#69f0ae', dist: distP(PDL, price) } : null,
+    PWH ? { tag: 'Prev Week High (PWH)',price: PWH, color: '#ff3d5a', dist: distP(PWH, price) } : null,
+    PWL ? { tag: 'Prev Week Low (PWL)', price: PWL, color: '#00e676', dist: distP(PWL, price) } : null,
+  ].filter(Boolean).sort((a, b) => b.price - a.price);
+  document.getElementById('pdhl-list').innerHTML = pdLevels.length
+    ? pdLevels.map(l => `
+        <div class="pdhl-row">
+          <span class="pdhl-tag">${l.tag}</span>
+          <span class="pdhl-price" style="color:${l.color};">${pFmt(l.price)}</span>
+          <span class="pdhl-dist">${l.dist}</span>
+        </div>`).join('')
+    : '<div class="fvg-empty">Loading previous day data…</div>';
+
+  // FVGs — distinguish post-sweep from regular
+  const allFVGsSorted = [...ict.postSweepFVGs.map(f => ({...f, postSweep: true})), ...ict.fvgs.filter(f => !ict.postSweepFVGs.includes(f)).map(f => ({...f, postSweep: false}))];
+  document.getElementById('fvg-count-badge').textContent = `${ict.postSweepFVGs.length} post-sweep · ${ict.fvgs.length} total`;
+  document.getElementById('fvg-list').innerHTML = allFVGsSorted.length
+    ? allFVGsSorted.slice(0,5).map(f => `
+        <div class="fvg-row" style="${f.postSweep ? 'border-color:'+ict.ictColor+'60' : ''}">
+          <div class="fvg-header">
+            <span class="fvg-type" style="color:${f.type==='BULLISH'?'var(--green)':'var(--red)'};">
+              ${f.postSweep ? '⚡ ' : ''}${f.type === 'BULLISH' ? '↑' : '↓'} ${f.type} FVG${f.postSweep ? ' — POST-SWEEP' : ''}
+            </span>
+            <span class="fvg-age">${f.age}h ago · ${distP(f.mid, price)}</span>
+          </div>
+          <div class="fvg-levels">
+            <div class="fvg-cell"><span class="fvg-cell-lbl">Top</span><span class="fvg-cell-val" style="color:var(--red);">${pFmt(f.top)}</span></div>
+            <div class="fvg-cell"><span class="fvg-cell-lbl">Mid (entry)</span><span class="fvg-cell-val" style="color:var(--gold);">${pFmt(f.mid)}</span></div>
+            <div class="fvg-cell"><span class="fvg-cell-lbl">Bot</span><span class="fvg-cell-val" style="color:var(--green);">${pFmt(f.bot)}</span></div>
+          </div>
+        </div>`).join('')
+    : '<div class="fvg-empty">No unmitigated FVGs in last 30 candles</div>';
+
+  // Liquidity pools
+  const allLiq = [...ict.liq.bsl.map(l=>({...l,above:true})), ...ict.liq.ssl.map(l=>({...l,above:false}))].sort((a,b)=>b.price-a.price);
+  document.getElementById('liq-count-badge').textContent = `${ict.liq.bsl.length} BSL · ${ict.liq.ssl.length} SSL`;
+  document.getElementById('liq-list').innerHTML = allLiq.length
+    ? allLiq.map(l => `
+        <div class="liq-row">
+          <span class="liq-icon">${l.above ? '▲' : '▼'}</span>
+          <span class="liq-tag">${l.label}</span>
+          <span class="liq-price" style="color:${l.above?'var(--red)':'var(--green)'};">${pFmt(l.price)}</span>
+          <span class="liq-dist">${distP(l.price, price)}</span>
+        </div>`).join('')
+    : '<div class="fvg-empty">No equal H/L clusters found in 48 bars</div>';
+
+  // Lock button
+  const lockBtn = document.getElementById('ict-lock-btn');
+  const canLock = !['WAIT / FLAT','WATCH LONG','WATCH SHORT'].includes(ict.action) && ict.entryMid !== null;
+  lockBtn.disabled = !canLock;
+  lockBtn.style.setProperty('--ict-color', canLock ? ict.ictColor : '#4a6070');
+  lockBtn.style.color = canLock ? ict.ictColor : '#4a6070';
+  lockBtn.style.borderColor = canLock ? ict.ictColor : '#253040';
+  lockBtn.textContent = canLock
+    ? `⊕ Lock "${ict.action}" ICT Setup as Trade Plan`
+    : ict.action.includes('WATCH')
+      ? `⏳ ${ict.action} — Waiting for MSS + FVG`
+      : '⊘ Waiting for ICT Trigger (Sweep)';
+
+  _lastICTSnap = ict;
+}
 
   // Panel color
   const panel = document.getElementById('ict-panel');
