@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src *;">
 <title>MaruProfit | BTC SMC Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2174,33 +2175,80 @@ function updateSessionsUI(sessions) {
 // ──────────────────────────────────────────────
 // ──────────────────────────────────────────────
 // FETCH HELPERS
-// Uses data-api.binance.vision which has open
-// CORS headers — works from any browser/domain
-// Falls back to api.binance.com if needed
+// Strategy (in order):
+//   1. data-api.binance.vision  (Binance public CORS endpoint)
+//   2. api1/api2/api.binance.com (Binance mirrors)
+//   3. allorigins.win CORS proxy (last resort)
 // ──────────────────────────────────────────────
-const BINANCE_ENDPOINTS = [
-  'https://data-api.binance.vision',   // Public data endpoint — open CORS
-  'https://api1.binance.com',          // Fallback 1
-  'https://api2.binance.com',          // Fallback 2
-  'https://api.binance.com',           // Fallback 3
+const BINANCE_BASES = [
+  'https://data-api.binance.vision',
+  'https://api1.binance.com',
+  'https://api2.binance.com',
+  'https://api.binance.com',
 ];
-let _activeEndpoint = BINANCE_ENDPOINTS[0];
+let _goodBase = null;
+
+function showLoadingStatus(msg) {
+  let el = document.getElementById('fetch-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'fetch-status';
+    el.style.cssText = [
+      'position:fixed','bottom:16px','left:50%','transform:translateX(-50%)',
+      'z-index:9999','background:#131920','border:1px solid #253040',
+      'color:#4a6070','font-family:Space Mono,monospace','font-size:0.6rem',
+      'padding:6px 14px','border-radius:20px','white-space:nowrap',
+      'max-width:90vw','overflow:hidden','text-overflow:ellipsis',
+    ].join(';');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideLoadingStatus() {
+  const el = document.getElementById('fetch-status');
+  if (el) el.style.display = 'none';
+}
+
+async function tryFetch(url) {
+  const r = await fetch(url, { mode: 'cors', cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
 
 async function binanceFetch(path) {
-  // Try current active endpoint first
-  for (let i = 0; i < BINANCE_ENDPOINTS.length; i++) {
-    const base = i === 0 ? _activeEndpoint : BINANCE_ENDPOINTS[i];
-    try {
-      const r = await fetch(base + path, { mode: 'cors' });
-      if (r.ok) {
-        _activeEndpoint = base; // remember working endpoint
-        return r.json();
-      }
-    } catch (e) {
-      // Try next endpoint
-    }
+  // 1. Try remembered good base first (fast path)
+  if (_goodBase) {
+    try { return await tryFetch(_goodBase + path); } catch(e) { _goodBase = null; }
   }
-  throw new Error('All Binance endpoints failed — check internet connection');
+
+  // 2. Try all Binance bases
+  for (const base of BINANCE_BASES) {
+    showLoadingStatus('Connecting to Binance… ' + base.replace('https://',''));
+    try {
+      const data = await tryFetch(base + path);
+      _goodBase = base;
+      return data;
+    } catch(e) { /* try next */ }
+  }
+
+  // 3. CORS proxy fallback (allorigins.win)
+  showLoadingStatus('Using CORS proxy fallback…');
+  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.binance.com' + path);
+  try {
+    const data = await tryFetch(proxyUrl);
+    return data;
+  } catch(e) { /* fall through */ }
+
+  // 4. Second proxy (corsproxy.io)
+  showLoadingStatus('Trying secondary proxy…');
+  const proxy2 = 'https://corsproxy.io/?' + encodeURIComponent('https://api.binance.com' + path);
+  try {
+    const data = await tryFetch(proxy2);
+    return data;
+  } catch(e) { /* fall through */ }
+
+  throw new Error('All endpoints failed. Check internet or try opening in a different browser.');
 }
 
 async function fetchTicker() {
@@ -4192,12 +4240,15 @@ function lockICTSetup() {
 // ──────────────────────────────────────────────
 async function update() {
   try {
+    showLoadingStatus('Fetching market data…');
     const [tickerData, klines1h, klines4h] = await Promise.all([
       fetchTicker(),
       fetchKlines('1h', 300),
       fetchKlines('4h', 150)
     ]);
-    // Clear any error state
+    hideLoadingStatus();
+
+    // Clear any error banner
     const errEl = document.getElementById('api-error-banner');
     if (errEl) errEl.style.display = 'none';
 
@@ -4210,35 +4261,56 @@ async function update() {
     const ivm = calcIVM(klines1h);
     updateIVM(ivm);
 
-    // Session Levels
     const sessions = calcSessions(klines1h);
     updateSessionsUI(sessions);
 
-    // ICT Comprehensive Analysis
     const ict = calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h);
     updateICTPanel(ict);
 
-    // Legacy command summary
     updateCommandSummary(analysis1h, analysis4h, ivm);
 
   } catch (e) {
-    console.error('Update error', e);
-    // Show error banner
+    hideLoadingStatus();
+    console.error('Update error:', e);
+
+    // Show prominent error banner
     let errEl = document.getElementById('api-error-banner');
     if (!errEl) {
       errEl = document.createElement('div');
       errEl.id = 'api-error-banner';
-      errEl.style.cssText = 'position:fixed;top:52px;left:0;right:0;z-index:999;background:#ff3d5a;color:#000;font-family:Syne,sans-serif;font-weight:700;font-size:0.72rem;padding:8px 16px;text-align:center;letter-spacing:1px;';
+      errEl.style.cssText = [
+        'position:fixed','top:52px','left:0','right:0','z-index:9998',
+        'background:#ff3d5a','color:#000',
+        'font-family:Syne,sans-serif','font-weight:700','font-size:0.7rem',
+        'padding:10px 16px','text-align:center','letter-spacing:1px',
+        'line-height:1.5',
+      ].join(';');
       document.body.appendChild(errEl);
     }
     errEl.style.display = 'block';
-    errEl.textContent = '⚠ API connection failed — retrying… (' + e.message + ')';
-    // Retry sooner on error
-    setTimeout(update, 8000);
+    errEl.innerHTML = '⚠ DATA LOAD FAILED — ' + e.message + '<br>'
+      + '<span style="font-weight:400;font-size:0.65rem;">Retrying in 10s… If this persists, try opening the file directly in your browser (not via GitHub Pages).</span>';
+
+    setTimeout(update, 10000);
   }
 }
 
-update();
+// ── Startup: test connection and kick off data load ──
+(async function startup() {
+  showLoadingStatus('Testing connection to Binance…');
+  // Quick ping test
+  try {
+    const ping = await fetch('https://data-api.binance.vision/api/v3/ping', { mode: 'cors', cache: 'no-store' });
+    if (ping.ok) {
+      _goodBase = 'https://data-api.binance.vision';
+      showLoadingStatus('Connected ✓ Loading market data…');
+    }
+  } catch(e) {
+    showLoadingStatus('Direct connection blocked — trying proxy…');
+  }
+  update();
+})();
+
 setInterval(update, 60000);
 setInterval(async () => {
   try {
