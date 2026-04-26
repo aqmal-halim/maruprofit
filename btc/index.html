@@ -1395,7 +1395,7 @@ footer {
   <div class="panel">
     <div class="panel-header">
       <span class="panel-title">Institutional Value Module</span>
-      <span class="panel-badge" id="ivm-tf-badge">1H SESSION</span>
+      <span class="panel-badge" id="ivm-tf-badge">DAILY · NY 00:00</span>
     </div>
     <div class="ivm-section-title">Market Context</div>
     <div style="padding:8px 12px 4px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -1415,7 +1415,7 @@ footer {
     </div>
     <div class="ivm-grid">
       <div class="ivm-card wide" style="--ivm-accent: var(--accent);">
-        <span class="ivm-label">Session VWAP</span>
+        <span class="ivm-label">Daily VWAP (NY anchor)</span>
         <div style="display:flex;align-items:baseline;justify-content:space-between;">
           <span class="ivm-value" id="ivm-vwap">—</span>
           <span class="ivm-sub" id="ivm-vwap-candles">— candles</span>
@@ -1425,9 +1425,9 @@ footer {
           <div class="vwap-bar-thumb" id="ivm-vwap-thumb"></div>
         </div>
         <div class="vwap-bar-labels">
-          <span id="ivm-vwap-low-lbl">Session Low</span>
-          <span style="color:var(--accent);">VWAP</span>
-          <span id="ivm-vwap-high-lbl">Session High</span>
+          <span id="ivm-vwap-low-lbl">Daily Low</span>
+          <span style="color:var(--accent);">D-VWAP</span>
+          <span id="ivm-vwap-high-lbl">Daily High</span>
         </div>
       </div>
       <div class="ivm-card" style="--ivm-accent: var(--gold);">
@@ -1791,65 +1791,91 @@ function sessionPOC(klineSlice) {
 }
 
 // ──────────────────────────────────────────────
-// Compute session H/L/POC for each session def
-// using the last two calendar days of 1h klines
-// to guarantee we always find a completed session
+// SESSION WINDOW CALCULATOR
+//
+// Professional approach: each session is defined
+// as a continuous time window in UTC. We find the
+// most recent occurrence of that window and use
+// exactly those bars — no hour-of-day filtering
+// that can bleed across midnight boundaries.
+//
+// Sessions (UTC):
+//   Asian:  00:00 – 09:00  (same calendar day)
+//   London: 08:00 – 17:00  (same calendar day)
+//   NY:     13:00 – 22:00  (same calendar day)
+//
+// "Most recent" means:
+//   - If the window is currently open → use bars
+//     from this window's start to now
+//   - If the window closed today → use today's
+//     completed window
+//   - If the window hasn't started yet today →
+//     use yesterday's completed window (CLOSED)
 // ──────────────────────────────────────────────
 function calcSessions(klines1h) {
-  const nowMs = Date.now();
+  const nowMs  = Date.now();
   const nowUTC = new Date(nowMs);
-  const curH  = nowUTC.getUTCHours();
+  const curH   = nowUTC.getUTCHours() + nowUTC.getUTCMinutes() / 60;
 
-  // Look back 2 full calendar days worth of bars = 48 bars max
-  const lookback = klines1h.slice(-48);
+  // UTC calendar day start (midnight UTC) for a given timestamp
+  function dayStartUTC(ms) {
+    const d = new Date(ms);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+
+  // Build absolute UTC ms window for a session on a given day
+  function sessionWindow(def, dayStartMs) {
+    return {
+      open:  dayStartMs + def.startH * 3600000,
+      close: dayStartMs + def.endH   * 3600000,
+    };
+  }
+
+  const todayStart     = dayStartUTC(nowMs);
+  const yesterdayStart = todayStart - 86400000;
 
   return SESSION_DEFS.map(def => {
-    // Determine status: LIVE, CLOSED (today), or UPCOMING
-    const isLive = curH >= def.startH && curH < def.endH;
+    const todayWin     = sessionWindow(def, todayStart);
+    const yesterdayWin = sessionWindow(def, yesterdayStart);
 
-    // Find the most recent window of bars that falls within this session's UTC hour range
-    // Filter bars: open time hour must be in [startH, endH)
-    const sessionBars = lookback.filter(k => {
-      const h = utcHour(Number(k[0]));
-      return h >= def.startH && h < def.endH;
-    });
+    // Determine status and which window to use
+    let winOpen, winClose, status;
 
-    if (!sessionBars.length) {
-      return { ...def, status: isLive ? 'LIVE' : 'NO DATA', high: null, low: null, poc: null, barCount: 0 };
+    if (nowMs >= todayWin.open && nowMs < todayWin.close) {
+      // Session is LIVE right now
+      winOpen  = todayWin.open;
+      winClose = nowMs;          // up to current bar
+      status   = 'LIVE';
+    } else if (nowMs >= todayWin.close) {
+      // Session completed today
+      winOpen  = todayWin.open;
+      winClose = todayWin.close;
+      status   = 'CLOSED';
+    } else {
+      // Session hasn't opened yet today → show yesterday's completed session
+      winOpen  = yesterdayWin.open;
+      winClose = yesterdayWin.close;
+      status   = 'UPCOMING'; // today's session is upcoming; data shown is yesterday's
     }
 
-    // For non-live sessions, only use bars from the most recent completed session window
-    // i.e., bars that share the same calendar day as the last bar in the set
-    let useBars;
-    if (isLive) {
-      // Use today's bars only
-      const todayStart = utcDayStart(nowMs);
-      useBars = sessionBars.filter(k => Number(k[0]) >= todayStart);
-      if (!useBars.length) useBars = sessionBars; // fallback
-    } else {
-      // Use bars from the most recent day that has data for this session
-      const lastBarTime = Number(sessionBars[sessionBars.length - 1][0]);
-      const lastDay = utcDayStart(lastBarTime);
-      useBars = sessionBars.filter(k => utcDayStart(Number(k[0])) === lastDay);
+    // Filter 1h klines whose open time falls within [winOpen, winClose)
+    // kline[0] = open time ms
+    const useBars = klines1h.filter(k => {
+      const t = Number(k[0]);
+      return t >= winOpen && t < winClose;
+    });
+
+    if (!useBars.length) {
+      return { ...def, status, high: null, low: null, poc: null, barCount: 0, dateLabel: '' };
     }
 
     const high = Math.max(...useBars.map(k => parseFloat(k[2])));
     const low  = Math.min(...useBars.map(k => parseFloat(k[3])));
     const poc  = sessionPOC(useBars);
 
-    // Status
-    let status = 'CLOSED';
-    if (isLive) status = 'LIVE';
-    else {
-      // Check if upcoming today (hasn't started yet)
-      if (curH < def.startH) status = 'UPCOMING';
-    }
-
-    // Date label for closed sessions
-    const lastK = useBars[useBars.length - 1];
-    const dateMs = Number(lastK[0]);
-    const d = new Date(dateMs);
-    const dateLabel = d.toLocaleDateString('en-US', { month:'short', day:'numeric', timeZone:'UTC' });
+    // Date label: show the date this session ran on
+    const winDate = new Date(winOpen);
+    const dateLabel = winDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
     return { ...def, status, high, low, poc, barCount: useBars.length, dateLabel };
   });
@@ -1885,7 +1911,11 @@ function updateSessionsUI(sessions) {
     }
 
     const statusClass = s.status === 'LIVE' ? 'sstat-live' : s.status === 'UPCOMING' ? 'sstat-upcoming' : 'sstat-closed';
-    const statusLabel = s.status === 'LIVE' ? '● LIVE' : s.status === 'UPCOMING' ? '◌ UPCOMING' : `Closed ${s.dateLabel}`;
+    const statusLabel = s.status === 'LIVE'
+      ? '● LIVE'
+      : s.status === 'UPCOMING'
+        ? `◌ Opens ${s.def ? '' : ''}${s.timeLabel.split('–')[0]} UTC`
+        : `Closed ${s.dateLabel}`;
 
     const range = s.high - s.low;
     const safeLow = s.low - range * 0.02;
@@ -1914,7 +1944,7 @@ function updateSessionsUI(sessions) {
       <div class="session-header">
         <div>
           <div class="session-name">${s.name}</div>
-          <div class="session-time">${s.timeLabel} · ${s.barCount}h of data</div>
+          <div class="session-time">${s.timeLabel} · ${s.status === 'UPCOMING' ? `Yesterday ${s.dateLabel}` : s.status === 'LIVE' ? `${s.barCount}h live` : `${s.barCount}h · ${s.dateLabel}`}</div>
         </div>
         <span class="session-status ${statusClass}">${statusLabel}</span>
       </div>
@@ -2461,10 +2491,24 @@ function updateMTF(analysis1h, analysis4h) {
 
 // ══════════════════════════════════════════════
 // INSTITUTIONAL VALUE MODULE
+// Anchored to NY midnight = 05:00 UTC
+// This matches TradingView's default Daily VWAP
+// and the ICT / SMC standard daily candle open.
 // ══════════════════════════════════════════════
+function nyDayStart(nowMs) {
+  // NY session daily candle opens at 00:00 EST = 05:00 UTC (04:00 UTC during EDT)
+  // We use 05:00 UTC as a fixed, simple anchor — close enough for all practical trading use.
+  const NY_OPEN_UTC_H = 5; // hours
+  const d = new Date(nowMs);
+  let anchor = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), NY_OPEN_UTC_H, 0, 0, 0);
+  // If current UTC time is before 05:00, step back one day
+  if (nowMs < anchor) anchor -= 86400000;
+  return anchor;
+}
+
 function calcIVM(klines1h) {
   const nowMs    = Date.now();
-  const dayStart = nowMs - (nowMs % 86400000);
+  const dayStart = nyDayStart(nowMs);          // ← NY midnight anchor (05:00 UTC)
   let sessionK = klines1h.filter(k => Number(k[0]) >= dayStart);
   if (sessionK.length < 3) sessionK = klines1h.slice(-24);
   const n = sessionK.length;
@@ -2581,7 +2625,7 @@ function updateIVM(ivm) {
   }
 
   document.getElementById('ivm-vwap').textContent         = fmtPrice(ivm.vwap);
-  document.getElementById('ivm-vwap-candles').textContent = ivm.candleCount + ' candles';
+          document.getElementById('ivm-vwap-candles').textContent = ivm.candleCount + 'h · NY anchor';
 
   const sRange   = ivm.sessionHigh - ivm.sessionLow;
   const vwapPct  = Math.max(2, Math.min(98, ((ivm.vwap         - ivm.sessionLow) / sRange) * 100));
@@ -2592,8 +2636,8 @@ function updateIVM(ivm) {
   document.getElementById('ivm-vwap-fill').style.background = barColor;
   document.getElementById('ivm-vwap-thumb').style.left      = pricePct + '%';
   document.getElementById('ivm-vwap-thumb').style.background = barColor;
-  document.getElementById('ivm-vwap-low-lbl').textContent   = fmtPrice(ivm.sessionLow);
-  document.getElementById('ivm-vwap-high-lbl').textContent  = fmtPrice(ivm.sessionHigh);
+  document.getElementById('ivm-vwap-low-lbl').textContent   = fmtPrice(ivm.sessionLow)  + ' (D-Low)';
+  document.getElementById('ivm-vwap-high-lbl').textContent  = fmtPrice(ivm.sessionHigh) + ' (D-High)';
 
   document.getElementById('ivm-poc').textContent      = fmtPrice(ivm.poc);
   document.getElementById('ivm-poc-dist').textContent =
