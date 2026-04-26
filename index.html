@@ -2993,19 +2993,23 @@ function updateCommandSummary(analysis1h, analysis4h, ivm) {
   }
 
   const wrap = document.getElementById('cmd-wrap');
-  wrap.style.setProperty('--cmd-color', cmdColor);
-  wrap.className = 'cmd-wrap' + (isStrong ? ' strong' : '');
+  // cmd-wrap removed — ICT panel now handles the main analysis display
+  // Only keep storeCommandSnapshot for the legacy lock button
+  if (wrap) {
+    wrap.style.setProperty('--cmd-color', cmdColor);
+    wrap.className = 'cmd-wrap' + (isStrong ? ' strong' : '');
+  }
 
-  document.getElementById('cmd-action').textContent  = action;
-  document.getElementById('cmd-action').style.color  = cmdColor;
-  document.getElementById('cmd-reasoning').innerHTML = reasoning;
-  document.getElementById('cmd-reasoning').style.borderLeftColor = cmdColor;
-  document.querySelectorAll('#cmd-reasoning b').forEach(b => b.style.color = cmdColor);
+  const cmdActionEl = document.getElementById('cmd-action');
+  if (cmdActionEl) { cmdActionEl.textContent = action; cmdActionEl.style.color = cmdColor; }
+  const cmdReasonEl = document.getElementById('cmd-reasoning');
+  if (cmdReasonEl) { cmdReasonEl.innerHTML = reasoning; cmdReasonEl.style.borderLeftColor = cmdColor; cmdReasonEl.querySelectorAll('b').forEach(b => b.style.color = cmdColor); }
 
   const scorePct = Math.round(composite * 100);
-  document.getElementById('cmd-score-val').textContent    = scorePct + '%';
-  document.getElementById('cmd-mini-fill').style.width    = scorePct + '%';
-  document.getElementById('cmd-mini-fill').style.background = cmdColor;
+  const cmdScoreEl = document.getElementById('cmd-score-val');
+  if (cmdScoreEl) cmdScoreEl.textContent = scorePct + '%';
+  const cmdFillEl = document.getElementById('cmd-mini-fill');
+  if (cmdFillEl) { cmdFillEl.style.width = scorePct + '%'; cmdFillEl.style.background = cmdColor; }
 
   const pills = [
     { label: '1H: ' + analysis1h.label, active: true },
@@ -3016,11 +3020,10 @@ function updateCommandSummary(analysis1h, analysis4h, ivm) {
     { label: 'CONF: ' + analysis1h.confidence + '%', active: analysis1h.confidence >= 60 },
   ].filter(Boolean);
 
-  document.getElementById('cmd-pills').innerHTML = pills.map(p =>
-    `<span class="cmd-pill${p.active ? ' active-pill' : ''}">${p.label}</span>`
-  ).join('');
-
-  document.getElementById('cmd-time').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  const cmdPillsEl = document.getElementById('cmd-pills');
+  if (cmdPillsEl) cmdPillsEl.innerHTML = pills.map(p => `<span class="cmd-pill${p.active ? ' active-pill' : ''}">${p.label}</span>`).join('');
+  const cmdTimeEl = document.getElementById('cmd-time');
+  if (cmdTimeEl) cmdTimeEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
 
   let entryPrice, entryZoneLo, entryZoneHi, slPrice, tp1Price, tp2Price;
 
@@ -3044,7 +3047,7 @@ function updateCommandSummary(analysis1h, analysis4h, ivm) {
 
   storeCommandSnapshot({
     action, cmdColor,
-    reasoning: document.getElementById('cmd-reasoning').innerHTML,
+    reasoning: reasoning,
     entryPrice, entryZoneLo, entryZoneHi, slPrice, tp1Price, tp2Price,
   });
 }
@@ -3068,29 +3071,36 @@ function getKillzoneStatus() {
   const utcMin = new Date(nowMs).getUTCMinutes();
   const nowDecimal = utcH + utcMin / 60;
 
-  // Check live
+  // Check live killzones
   for (const kz of KILLZONES) {
-    if (kz.startUTC === 0 && kz.endUTC === 0) continue; // skip placeholder
+    if (kz.startUTC === 0 && kz.endUTC === 0) continue;
     if (nowDecimal >= kz.startUTC && nowDecimal < kz.endUTC) {
       const minsLeft = Math.round((kz.endUTC - nowDecimal) * 60);
-      return { live: true, name: kz.name, color: kz.color, desc: kz.desc, minsLeft };
+      return { live: true, name: kz.name, color: kz.color, desc: kz.desc, minsLeft, minsUntil: 0, nextName: kz.name, nextColor: kz.color };
     }
   }
   // Asian KZ straddles midnight: 20:00 UTC onward
   if (utcH >= 20) {
     const minsLeft = Math.round((24 - nowDecimal) * 60);
-    return { live: true, name: 'Asian KZ', color: '#c8a84b', desc: 'Range formation — wait, don\'t trade', minsLeft };
+    return { live: true, name: 'Asian KZ', color: '#c8a84b', desc: 'Range formation — wait, don\'t trade', minsLeft, minsUntil: 0, nextName: 'Asian KZ', nextColor: '#c8a84b' };
   }
 
   // Find next killzone
-  const allStarts = [{ h: 0, name: 'Asian KZ', color: '#c8a84b' }, { h: 2, name: 'London KZ', color: '#a78bfa' }, { h: 7, name: 'NY AM KZ', color: '#38bdf8' }, { h: 12, name: 'NY Lunch', color: '#ff9100' }, { h: 13, name: 'NY PM KZ', color: '#38bdf8' }, { h: 20, name: 'Asian KZ', color: '#c8a84b' }];
+  const allStarts = [
+    { h: 0,  name: 'Asian KZ',  color: '#c8a84b' },
+    { h: 2,  name: 'London KZ', color: '#a78bfa' },
+    { h: 7,  name: 'NY AM KZ',  color: '#38bdf8' },
+    { h: 12, name: 'NY Lunch',  color: '#ff9100' },
+    { h: 13, name: 'NY PM KZ',  color: '#38bdf8' },
+    { h: 20, name: 'Asian KZ',  color: '#c8a84b' },
+  ];
   const upcoming = allStarts.filter(k => k.h > nowDecimal).sort((a, b) => a.h - b.h);
   if (upcoming.length) {
     const next = upcoming[0];
     const minsUntil = Math.round((next.h - nowDecimal) * 60);
-    return { live: false, nextName: next.name, nextColor: next.color, minsUntil };
+    return { live: false, name: '', color: '', desc: '', minsLeft: 0, nextName: next.name, nextColor: next.color, minsUntil };
   }
-  return { live: false, nextName: 'Asian KZ (tomorrow)', nextColor: '#c8a84b', minsUntil: Math.round((24 - nowDecimal + 20) * 60) };
+  return { live: false, name: '', color: '', desc: '', minsLeft: 0, nextName: 'Asian KZ (tomorrow)', nextColor: '#c8a84b', minsUntil: Math.round((24 - nowDecimal + 20) * 60) };
 }
 
 // ══════════════════════════════════════════════
@@ -3672,7 +3682,7 @@ function calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h) {
     {
       label: '③ Active Killzone',
       pass: kz.live && kz.name !== 'NY Lunch',
-      val: kz.live ? `${kz.name} · ${kz.minsLeft}min left` : `Next: ${kz.nextName} in ${kz.minsUntil || '?'}min`,
+      val: kz.live ? `${kz.name} · ${kz.minsLeft || 0}min left` : `Next: ${kz.nextName} in ${kz.minsUntil || 0}min`,
       color: kz.live && kz.name !== 'NY Lunch' ? 'var(--accent)' : 'var(--muted)',
       note: 'Only trade London (02–05 UTC) or NY AM (07–10 UTC)',
     },
@@ -3773,7 +3783,7 @@ function calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h) {
 
   // ══ PROFESSIONAL REASONING ══
   let reasoning = '';
-  const kzStr = kz.live ? `<b>✓ ${kz.name} active</b> (${kz.minsLeft}min left).` : `⚠ Outside killzone — next <b>${kz.nextName}</b> in ${kz.minsUntil}min.`;
+  const kzStr = kz.live ? `<b>✓ ${kz.name} active</b> (${kz.minsLeft || 0}min left).` : `⚠ Outside killzone — next <b>${kz.nextName}</b> in ${kz.minsUntil || 0}min.`;
   const htfStr = `4H is <b>${htfNeutral ? 'NEUTRAL' : (htfBullish ? 'BULLISH' : 'BEARISH')}</b>.`;
   const pdStr  = `Price at <b>${pd.pct.toFixed(1)}%</b> of daily range (${pd.css === 'bias-premium' ? 'Premium' : pd.css === 'bias-discount' ? 'Discount' : 'Equilibrium'}).`;
 
@@ -4264,8 +4274,18 @@ async function update() {
     const sessions = calcSessions(klines1h);
     updateSessionsUI(sessions);
 
-    const ict = calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h);
-    updateICTPanel(ict);
+    // ICT Comprehensive Analysis — wrapped so errors are visible not silent
+    try {
+      const ict = calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h);
+      updateICTPanel(ict);
+    } catch(ictErr) {
+      console.error('ICT Analysis error:', ictErr);
+      const panel = document.getElementById('ict-panel');
+      if (panel) {
+        const errDiv = panel.querySelector('#ict-reasoning') || panel;
+        if (errDiv) errDiv.innerHTML = `<span style="color:var(--red);font-size:0.7rem;">⚠ ICT engine error: ${ictErr.message}. Check console.</span>`;
+      }
+    }
 
     updateCommandSummary(analysis1h, analysis4h, ivm);
 
