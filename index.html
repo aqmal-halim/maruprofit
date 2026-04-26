@@ -3330,32 +3330,85 @@ function detectMSS(klines, direction, sweepBarIdx, lookback = 10) {
 
 // ══════════════════════════════════════════════
 // SESSION SWEEP DETECTOR
-// Did price sweep the Asian / London session
-// high or low within the last N candles?
-// Returns sweep details including which side,
-// price, and how many bars ago it happened.
+//
+// ICT RULE: You can only sweep a CLOSED session's
+// H/L. A live session's range is still forming —
+// any "wick" below its current low IS that low,
+// not a sweep of it.
+//
+// Priority order:
+//   London KZ (02–05 UTC)  → sweep Asian H/L only
+//   NY AM KZ (07–10 UTC)   → sweep Asian H/L or London H/L
+//   NY PM KZ (13–16 UTC)   → sweep London H/L or NY H/L
+//   Outside killzone       → sweep most recently CLOSED session
 // ══════════════════════════════════════════════
 function detectSessionSweep(klines, sessions, lookbackBars = 6) {
   const n = klines.length;
-  const price = parseFloat(klines[n-1][4]);
   const recentBars = klines.slice(-lookbackBars);
 
-  const asian  = sessions.find(s => s.id === 'asian');
-  const london = sessions.find(s => s.id === 'london');
-  const ny     = sessions.find(s => s.id === 'ny');
+  // Only use CLOSED sessions as sweep targets
+  const closedSessions = sessions.filter(s =>
+    s.status === 'CLOSED' && s.high && s.low
+  );
+
+  // Also allow the most recent UPCOMING session (yesterday's data shown)
+  // as it represents the prior completed range
+  const upcomingSessions = sessions.filter(s =>
+    s.status === 'UPCOMING' && s.high && s.low
+  );
+
+  // Determine which sessions are valid sweep targets based on killzone
+  const kz = getKillzoneStatus();
+  const utcH = new Date().getUTCHours();
+
+  let targetSessions = [];
+
+  if (kz.live) {
+    if (kz.name === 'London KZ') {
+      // London open: only sweep the Asian session (just closed or upcoming=yesterday)
+      const asian = closedSessions.find(s => s.id === 'asian')
+                 || upcomingSessions.find(s => s.id === 'asian');
+      if (asian) targetSessions.push({ session: asian, label: 'Asian' });
+    } else if (kz.name === 'NY AM KZ') {
+      // NY open: sweep Asian or London (both should be closed by 07:00 UTC)
+      const asian  = closedSessions.find(s => s.id === 'asian')
+                  || upcomingSessions.find(s => s.id === 'asian');
+      const london = closedSessions.find(s => s.id === 'london');
+      if (asian)  targetSessions.push({ session: asian,  label: 'Asian'  });
+      if (london) targetSessions.push({ session: london, label: 'London' });
+    } else if (kz.name === 'NY PM KZ') {
+      // PM session: sweep London or NY (Asian is too old)
+      const london = closedSessions.find(s => s.id === 'london');
+      const ny     = closedSessions.find(s => s.id === 'ny');
+      if (london) targetSessions.push({ session: london, label: 'London' });
+      if (ny)     targetSessions.push({ session: ny,     label: 'NY'     });
+    } else {
+      // Asian KZ or NY Lunch — use all closed sessions
+      closedSessions.forEach(s =>
+        targetSessions.push({ session: s, label: s.name.split(' ')[0] })
+      );
+    }
+  } else {
+    // Outside killzone — use all closed sessions
+    closedSessions.forEach(s =>
+      targetSessions.push({ session: s, label: s.name.split(' ')[0] })
+    );
+    upcomingSessions.forEach(s =>
+      targetSessions.push({ session: s, label: s.name.split(' ')[0] })
+    );
+  }
 
   const sweeps = [];
 
   function checkSweep(session, label) {
     if (!session || !session.high || !session.low) return;
-    // Check each recent bar to see if its wick exceeded session H/L
     recentBars.forEach((bar, i) => {
-      const bHigh = parseFloat(bar[2]);
-      const bLow  = parseFloat(bar[3]);
+      const bHigh  = parseFloat(bar[2]);
+      const bLow   = parseFloat(bar[3]);
       const bClose = parseFloat(bar[4]);
       const barsAgo = lookbackBars - 1 - i;
 
-      // Swept high: bar wick went above session high but CLOSED back below it (rejection)
+      // Swept high: wick above session high, closed back below (BSL grab → SHORT)
       if (bHigh > session.high && bClose < session.high) {
         sweeps.push({
           type: 'HIGH_SWEEP',
@@ -3363,12 +3416,11 @@ function detectSessionSweep(klines, sessions, lookbackBars = 6) {
           level: session.high,
           sweepHigh: bHigh,
           barsAgo,
-          // After sweeping highs → expect SHORT (sell-side liquidity grab, price should fall)
           impliedDirection: 'SHORT',
           description: `${label} High swept at $${Math.round(session.high).toLocaleString()} — BSL grabbed, expect reversal SHORT`,
         });
       }
-      // Swept low: bar wick went below session low but CLOSED back above it (rejection)
+      // Swept low: wick below session low, closed back above (SSL grab → LONG)
       if (bLow < session.low && bClose > session.low) {
         sweeps.push({
           type: 'LOW_SWEEP',
@@ -3376,7 +3428,6 @@ function detectSessionSweep(klines, sessions, lookbackBars = 6) {
           level: session.low,
           sweepLow: bLow,
           barsAgo,
-          // After sweeping lows → expect LONG (buy-side liquidity grab, price should rise)
           impliedDirection: 'LONG',
           description: `${label} Low swept at $${Math.round(session.low).toLocaleString()} — SSL grabbed, expect reversal LONG`,
         });
@@ -3384,11 +3435,8 @@ function detectSessionSweep(klines, sessions, lookbackBars = 6) {
     });
   }
 
-  checkSweep(asian,  'Asian');
-  checkSweep(london, 'London');
-  checkSweep(ny,     'NY');
+  targetSessions.forEach(({ session, label }) => checkSweep(session, label));
 
-  // Sort by most recent first
   sweeps.sort((a, b) => a.barsAgo - b.barsAgo);
   return sweeps;
 }
