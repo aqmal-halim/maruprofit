@@ -1101,6 +1101,93 @@ footer {
 }
 
 /* ══════════════════════════════════════════════
+   ICT COMPREHENSIVE ANALYSIS PANEL
+   ══════════════════════════════════════════════ */
+.ict-panel {
+  position: relative; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--ict-color, var(--border));
+  background: var(--panel2); transition: border-color 0.6s;
+}
+.ict-panel::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--ict-color, var(--border2)); transition: background 0.6s;
+}
+@keyframes ict-pulse { 0%,100%{box-shadow:0 0 0 0 transparent;}50%{box-shadow:0 0 20px 3px var(--ict-color,transparent);} }
+.ict-panel.strong { animation: ict-pulse 3s ease-in-out infinite; }
+.ict-header { padding:12px 14px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.ict-eyebrow { font-size:0.58rem; letter-spacing:2.5px; text-transform:uppercase; color:var(--muted); }
+.ict-timestamp { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--muted); }
+.ict-kz-row { display:flex; align-items:center; gap:8px; padding:10px 14px 8px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.kz-badge { display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:6px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; border:1px solid; flex-shrink:0; }
+.kz-live { background:rgba(0,212,255,0.1); color:var(--accent); border-color:rgba(0,212,255,0.4); animation:kz-live-pulse 1.5s ease-in-out infinite; }
+.kz-dead { background:rgba(144,164,174,0.07); color:var(--muted); border-color:var(--border2); }
+@keyframes kz-live-pulse { 0%,100%{box-shadow:none;}50%{box-shadow:0 0 10px rgba(0,212,255,0.3);} }
+.kz-countdown { font-family:'Space Mono',monospace; font-size:0.68rem; color:var(--muted); }
+.kz-countdown b { color:var(--accent); }
+.bias-pill { margin-left:auto; padding:4px 12px; border-radius:20px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; }
+.bias-premium { background:rgba(255,61,90,0.1); color:var(--red); border:1px solid rgba(255,61,90,0.3); }
+.bias-discount { background:rgba(0,230,118,0.1); color:var(--green); border:1px solid rgba(0,230,118,0.3); }
+.bias-eq { background:rgba(144,164,174,0.08); color:var(--neutral); border:1px solid var(--border2); }
+.pd-gauge-wrap { padding:8px 14px 10px; border-bottom:1px solid var(--border); }
+.pd-gauge-labels { display:flex; justify-content:space-between; font-family:'Space Mono',monospace; font-size:0.55rem; color:var(--muted); margin-bottom:4px; }
+.pd-track { height:10px; border-radius:5px; position:relative; background:linear-gradient(90deg,var(--green) 0%,var(--border2) 50%,var(--red) 100%); overflow:visible; }
+.pd-thumb { position:absolute; top:-5px; width:20px; height:20px; border-radius:50%; background:#fff; border:2px solid var(--bg); transform:translateX(-50%); box-shadow:0 0 6px rgba(255,255,255,0.5); transition:left 0.8s cubic-bezier(.4,0,.2,1); }
+.pd-midline { position:absolute; top:-4px; bottom:-4px; left:50%; width:2px; background:var(--gold); opacity:0.6; transform:translateX(-50%); }
+.pd-value-label { text-align:center; margin-top:8px; font-family:'Space Mono',monospace; font-size:0.65rem; }
+.ict-action-row { display:flex; align-items:center; gap:12px; padding:12px 14px 8px; }
+.ict-action-badge { font-family:'Syne',sans-serif; font-weight:800; font-size:1.2rem; letter-spacing:3px; text-transform:uppercase; color:var(--ict-color,var(--neutral)); flex-shrink:0; transition:color 0.6s; }
+.ict-score-col { flex:1; }
+.ict-score-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.ict-score-lbl { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--muted); }
+.ict-score-val { font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; color:var(--ict-color,var(--neutral)); }
+.ict-mini-bar { height:4px; background:var(--border); border-radius:2px; overflow:hidden; margin-bottom:6px; }
+.ict-mini-fill { height:100%; border-radius:2px; background:var(--ict-color,var(--neutral)); transition:width 0.8s cubic-bezier(.4,0,.2,1),background 0.6s; }
+.ict-levels-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+.ict-level-cell { background:var(--panel2); padding:10px 8px; text-align:center; }
+.ict-level-lbl { display:block; font-size:0.52rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+.ict-level-val { display:block; font-family:'Space Mono',monospace; font-weight:700; font-size:0.88rem; }
+.ict-level-sub { display:block; font-family:'Space Mono',monospace; font-size:0.52rem; color:var(--muted); margin-top:2px; }
+.ict-reasoning { padding:10px 14px; font-size:0.72rem; line-height:1.7; color:var(--text); border-left:3px solid var(--ict-color,var(--border2)); margin:0 14px 10px; background:rgba(0,0,0,0.2); border-radius:0 6px 6px 0; transition:border-color 0.6s; }
+.ict-reasoning b { color:var(--ict-color,var(--accent)); transition:color 0.6s; }
+.ict-checklist { padding:0 14px 12px; display:flex; flex-direction:column; gap:5px; }
+.ict-check-row { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:5px; background:rgba(0,0,0,0.15); border:1px solid var(--border); font-size:0.68rem; }
+.ict-check-icon { font-size:0.75rem; flex-shrink:0; width:16px; text-align:center; }
+.ict-check-label { flex:1; color:var(--muted); }
+.ict-check-val { font-family:'Space Mono',monospace; font-size:0.65rem; font-weight:700; }
+.pdhl-list { padding:10px 14px 12px; display:flex; flex-direction:column; gap:5px; }
+.pdhl-row { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; border-radius:5px; background:rgba(0,0,0,0.15); border:1px solid var(--border); }
+.pdhl-tag { font-size:0.58rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); flex:1; }
+.pdhl-price { font-family:'Space Mono',monospace; font-weight:700; font-size:0.82rem; flex:1; text-align:center; }
+.pdhl-dist { font-family:'Space Mono',monospace; font-size:0.62rem; color:var(--muted); flex:1; text-align:right; }
+.fvg-list { padding:10px 14px 12px; display:flex; flex-direction:column; gap:6px; }
+.fvg-row { border-radius:6px; border:1px solid var(--border); overflow:hidden; background:rgba(0,0,0,0.15); }
+.fvg-header { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid var(--border); }
+.fvg-type { font-size:0.6rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:700; }
+.fvg-age { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--muted); }
+.fvg-levels { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); }
+.fvg-cell { background:var(--panel2); padding:5px 8px; text-align:center; }
+.fvg-cell-lbl { display:block; font-size:0.5rem; text-transform:uppercase; color:var(--muted); letter-spacing:1px; }
+.fvg-cell-val { display:block; font-family:'Space Mono',monospace; font-size:0.72rem; font-weight:700; margin-top:1px; }
+.fvg-empty { padding:12px; text-align:center; font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--muted); }
+.liq-list { padding:10px 14px 12px; display:flex; flex-direction:column; gap:5px; }
+.liq-row { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; border-radius:5px; background:rgba(0,0,0,0.15); border:1px solid var(--border); }
+.liq-icon { font-size:0.7rem; flex-shrink:0; margin-right:6px; }
+.liq-tag { font-size:0.6rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); flex:1; }
+.liq-price { font-family:'Space Mono',monospace; font-weight:700; font-size:0.82rem; flex:1; text-align:center; }
+.liq-dist { font-family:'Space Mono',monospace; font-size:0.62rem; flex:1; text-align:right; }
+.ict-sub-header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px 4px; font-size:0.6rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); border-top:1px solid var(--border); }
+.ict-sub-badge { font-family:'Space Mono',monospace; font-size:0.58rem; padding:1px 7px; border-radius:10px; background:rgba(0,212,255,0.07); color:var(--muted); border:1px solid var(--border2); }
+.lock-btn-ict {
+  margin:0 14px 12px; width:calc(100% - 28px); padding:9px 14px; border-radius:7px;
+  border:1px solid var(--ict-color,var(--border2)); background:rgba(0,0,0,0.3);
+  color:var(--ict-color,var(--muted)); font-family:'Syne',sans-serif; font-weight:700;
+  font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.lock-btn-ict:hover { background:rgba(0,0,0,0.5); filter:brightness(1.2); }
+.lock-btn-ict:disabled { opacity:0.35; cursor:not-allowed; }
+
+/* ══════════════════════════════════════════════
    SESSION HIGH / LOW / POC PANEL
    ══════════════════════════════════════════════ */
 .sessions-wrap {
@@ -1298,29 +1385,115 @@ footer {
 
 <div class="main">
 
-  <!-- ⓪ COMMAND SUMMARY -->
-  <div class="cmd-wrap" id="cmd-wrap">
-    <div class="cmd-header">
-      <span class="cmd-eyebrow">⬡ Command Summary · BTC/USDT</span>
-      <span class="cmd-timestamp" id="cmd-time">—</span>
+  <!-- ⓪ ICT COMPREHENSIVE ANALYSIS -->
+  <div class="ict-panel" id="ict-panel">
+    <div class="ict-header">
+      <span class="ict-eyebrow">⬡ ICT Analysis · BTC/USDT · Daytrading Guide</span>
+      <span class="ict-timestamp" id="ict-time">—</span>
     </div>
-    <div class="cmd-action-row">
-      <span class="cmd-action-badge" id="cmd-action">LOADING…</span>
-      <div class="cmd-divider"></div>
-      <div class="cmd-score-col">
-        <div class="cmd-score-row">
-          <span class="cmd-score-label">COMPOSITE SCORE</span>
-          <span class="cmd-score-val" id="cmd-score-val">—</span>
+
+    <!-- Killzone + Premium/Discount bias row -->
+    <div class="ict-kz-row">
+      <span class="kz-badge kz-dead" id="kz-badge">◌ NO KILLZONE</span>
+      <span class="kz-countdown" id="kz-countdown"></span>
+      <span class="bias-pill bias-eq" id="pd-bias-pill">EQUILIBRIUM</span>
+    </div>
+
+    <!-- Premium / Discount gauge -->
+    <div class="pd-gauge-wrap">
+      <div class="pd-gauge-labels">
+        <span style="color:var(--green);">← Discount (Buy)</span>
+        <span style="color:var(--gold);">EQ 50%</span>
+        <span style="color:var(--red);">Premium (Sell) →</span>
+      </div>
+      <div class="pd-track" id="pd-track">
+        <div class="pd-midline"></div>
+        <div class="pd-thumb" id="pd-thumb" style="left:50%"></div>
+      </div>
+      <div class="pd-value-label" id="pd-value-label">Loading…</div>
+    </div>
+
+    <!-- Action + composite score -->
+    <div class="ict-action-row">
+      <span class="ict-action-badge" id="ict-action">LOADING…</span>
+      <div style="width:1px;height:28px;background:var(--border2);flex-shrink:0;"></div>
+      <div class="ict-score-col">
+        <div class="ict-score-row">
+          <span class="ict-score-lbl">ICT COMPOSITE SCORE</span>
+          <span class="ict-score-val" id="ict-score-val">—</span>
         </div>
-        <div class="cmd-mini-bar">
-          <div class="cmd-mini-fill" id="cmd-mini-fill" style="width:50%"></div>
-        </div>
-        <div class="cmd-pills" id="cmd-pills"></div>
+        <div class="ict-mini-bar"><div class="ict-mini-fill" id="ict-mini-fill" style="width:50%"></div></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;" id="ict-pills"></div>
       </div>
     </div>
-    <div class="cmd-reasoning" id="cmd-reasoning">Synthesizing all modules…</div>
-    <button class="lock-btn" id="lock-btn" onclick="lockSetup()" disabled>
-      ⊕ Lock This Setup as Trade Plan
+
+    <!-- Trade levels: Entry / SL / TP1 / TP2 -->
+    <div class="ict-levels-grid">
+      <div class="ict-level-cell">
+        <span class="ict-level-lbl">Entry Zone</span>
+        <span class="ict-level-val" id="ict-entry" style="color:var(--accent);">—</span>
+        <span class="ict-level-sub" id="ict-entry-sub">OTE / FVG</span>
+      </div>
+      <div class="ict-level-cell">
+        <span class="ict-level-lbl">Stop Loss</span>
+        <span class="ict-level-val" id="ict-sl" style="color:var(--red);">—</span>
+        <span class="ict-level-sub" id="ict-sl-sub">below structure</span>
+      </div>
+      <div class="ict-level-cell">
+        <span class="ict-level-lbl">TP1 · R:R</span>
+        <span class="ict-level-val" id="ict-tp1" style="color:var(--green);">—</span>
+        <span class="ict-level-sub" id="ict-tp1-sub">1st target</span>
+      </div>
+      <div class="ict-level-cell">
+        <span class="ict-level-lbl">TP2</span>
+        <span class="ict-level-val" id="ict-tp2" style="color:var(--green);">—</span>
+        <span class="ict-level-sub" id="ict-tp2-sub">2nd target</span>
+      </div>
+      <div class="ict-level-cell">
+        <span class="ict-level-lbl">Liquidity Target</span>
+        <span class="ict-level-val" id="ict-liq-target" style="color:var(--gold);">—</span>
+        <span class="ict-level-sub">Draw on liq.</span>
+      </div>
+      <div class="ict-level-cell">
+        <span class="ict-level-lbl">Risk : Reward</span>
+        <span class="ict-level-val" id="ict-rr" style="color:var(--gold);">—</span>
+        <span class="ict-level-sub" id="ict-rr-sub">to TP1</span>
+      </div>
+    </div>
+
+    <!-- Full reasoning -->
+    <div class="ict-reasoning" id="ict-reasoning">Synthesizing ICT framework…</div>
+
+    <!-- ICT Confluence checklist -->
+    <div class="ict-sub-header">
+      ICT Confluence Checklist
+      <span class="ict-sub-badge" id="ict-check-score">0/7</span>
+    </div>
+    <div class="ict-checklist" id="ict-checklist"></div>
+
+    <!-- PDH / PDL / PWH / PWL -->
+    <div class="ict-sub-header">
+      Prev. Day / Week Levels
+      <span class="ict-sub-badge">Key Magnets</span>
+    </div>
+    <div class="pdhl-list" id="pdhl-list"></div>
+
+    <!-- Fair Value Gaps -->
+    <div class="ict-sub-header">
+      Fair Value Gaps (1H)
+      <span class="ict-sub-badge" id="fvg-count-badge">—</span>
+    </div>
+    <div class="fvg-list" id="fvg-list"></div>
+
+    <!-- Liquidity Pools -->
+    <div class="ict-sub-header">
+      Liquidity Pools (Equal H/L)
+      <span class="ict-sub-badge" id="liq-count-badge">—</span>
+    </div>
+    <div class="liq-list" id="liq-list"></div>
+
+    <button class="lock-btn-ict" id="ict-lock-btn" onclick="lockICTSetup()" disabled>
+      ⊕ Lock ICT Setup as Trade Plan
     </button>
   </div>
 
@@ -2796,6 +2969,639 @@ function updateCommandSummary(analysis1h, analysis4h, ivm) {
   });
 }
 
+// ══════════════════════════════════════════════
+// ICT KILLZONE DEFINITIONS (NY time = UTC-5)
+// All times stored as UTC hours for simplicity
+// ══════════════════════════════════════════════
+const KILLZONES = [
+  { name: 'Asian KZ',  startUTC: 20, endUTC: 24, color: '#c8a84b',  desc: 'Range formation — wait, don\'t trade' },
+  { name: 'Asian KZ',  startUTC: 0,  endUTC: 0,  color: '#c8a84b',  desc: 'Range formation — wait, don\'t trade' }, // midnight wrap
+  { name: 'London KZ', startUTC: 2,  endUTC: 5,  color: '#a78bfa',  desc: 'Highest probability — London open sweep' },
+  { name: 'NY AM KZ',  startUTC: 7,  endUTC: 10, color: '#38bdf8',  desc: 'NY open — best for retail traders' },
+  { name: 'NY Lunch',  startUTC: 12, endUTC: 13, color: '#ff9100',  desc: 'Low liquidity — avoid new entries' },
+  { name: 'NY PM KZ',  startUTC: 13, endUTC: 16, color: '#38bdf8',  desc: 'PM session — continuation or reversal' },
+];
+
+function getKillzoneStatus() {
+  const nowMs  = Date.now();
+  const utcH   = new Date(nowMs).getUTCHours();
+  const utcMin = new Date(nowMs).getUTCMinutes();
+  const nowDecimal = utcH + utcMin / 60;
+
+  // Check live
+  for (const kz of KILLZONES) {
+    if (kz.startUTC === 0 && kz.endUTC === 0) continue; // skip placeholder
+    if (nowDecimal >= kz.startUTC && nowDecimal < kz.endUTC) {
+      const minsLeft = Math.round((kz.endUTC - nowDecimal) * 60);
+      return { live: true, name: kz.name, color: kz.color, desc: kz.desc, minsLeft };
+    }
+  }
+  // Asian KZ straddles midnight: 20:00 UTC onward
+  if (utcH >= 20) {
+    const minsLeft = Math.round((24 - nowDecimal) * 60);
+    return { live: true, name: 'Asian KZ', color: '#c8a84b', desc: 'Range formation — wait, don\'t trade', minsLeft };
+  }
+
+  // Find next killzone
+  const allStarts = [{ h: 0, name: 'Asian KZ', color: '#c8a84b' }, { h: 2, name: 'London KZ', color: '#a78bfa' }, { h: 7, name: 'NY AM KZ', color: '#38bdf8' }, { h: 12, name: 'NY Lunch', color: '#ff9100' }, { h: 13, name: 'NY PM KZ', color: '#38bdf8' }, { h: 20, name: 'Asian KZ', color: '#c8a84b' }];
+  const upcoming = allStarts.filter(k => k.h > nowDecimal).sort((a, b) => a.h - b.h);
+  if (upcoming.length) {
+    const next = upcoming[0];
+    const minsUntil = Math.round((next.h - nowDecimal) * 60);
+    return { live: false, nextName: next.name, nextColor: next.color, minsUntil };
+  }
+  return { live: false, nextName: 'Asian KZ (tomorrow)', nextColor: '#c8a84b', minsUntil: Math.round((24 - nowDecimal + 20) * 60) };
+}
+
+// ══════════════════════════════════════════════
+// FAIR VALUE GAP DETECTOR
+// 3-candle pattern: gap between candle[i-2].high
+// and candle[i].low (bullish) or vice versa
+// ══════════════════════════════════════════════
+function detectFVGs(klines, maxAge = 30) {
+  const fvgs = [];
+  const n = klines.length;
+  const currentPrice = parseFloat(klines[n - 1][4]);
+
+  for (let i = 2; i < n; i++) {
+    const c0_high = parseFloat(klines[i - 2][2]);
+    const c0_low  = parseFloat(klines[i - 2][3]);
+    const c2_high = parseFloat(klines[i][2]);
+    const c2_low  = parseFloat(klines[i][3]);
+    const ageCandles = n - 1 - i;
+    if (ageCandles > maxAge) continue;
+
+    // Bullish FVG: c0.low > c2.high  — gap above candle[i]
+    if (c0_low > c2_high) {
+      const top = c0_low, bot = c2_high, mid = (top + bot) / 2;
+      // Only show unfilled (price hasn't fully closed inside)
+      if (currentPrice < top) {
+        fvgs.push({ type: 'BULLISH', top, bot, mid, age: ageCandles, filled: currentPrice >= bot && currentPrice <= top });
+      }
+    }
+    // Bearish FVG: c0.high < c2.low — gap below candle[i]
+    if (c0_high < c2_low) {
+      const top = c2_low, bot = c0_high, mid = (top + bot) / 2;
+      if (currentPrice > bot) {
+        fvgs.push({ type: 'BEARISH', top, bot, mid, age: ageCandles, filled: currentPrice >= bot && currentPrice <= top });
+      }
+    }
+  }
+
+  // Sort: closest to price first, unfilled only
+  return fvgs
+    .filter(f => !f.filled)
+    .sort((a, b) => Math.abs(a.mid - currentPrice) - Math.abs(b.mid - currentPrice))
+    .slice(0, 5);
+}
+
+// ══════════════════════════════════════════════
+// PREVIOUS DAY / WEEK HIGH & LOW
+// ══════════════════════════════════════════════
+function calcPrevLevels(klines1h) {
+  const nowMs = Date.now();
+
+  // NY anchor: day starts at 05:00 UTC
+  function nyDayOf(ms) {
+    const NY_H = 5;
+    const d = new Date(ms);
+    let anchor = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), NY_H, 0, 0, 0);
+    if (ms < anchor) anchor -= 86400000;
+    return anchor;
+  }
+
+  const todayNYStart = nyDayOf(nowMs);
+  const ydayNYStart  = todayNYStart - 86400000;
+  const ydayNYEnd    = todayNYStart;
+
+  // Previous day bars
+  const pdBars = klines1h.filter(k => {
+    const t = Number(k[0]);
+    return t >= ydayNYStart && t < ydayNYEnd;
+  });
+
+  const PDH = pdBars.length ? Math.max(...pdBars.map(k => parseFloat(k[2]))) : null;
+  const PDL = pdBars.length ? Math.min(...pdBars.map(k => parseFloat(k[3]))) : null;
+
+  // Previous week: Mon 05:00 UTC to this week Mon 05:00 UTC
+  const nowDate = new Date(nowMs);
+  const dayOfWeek = nowDate.getUTCDay(); // 0=Sun
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  const thisWeekMonStart = Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate() - daysSinceMonday, 5, 0, 0, 0);
+  const prevWeekMonStart = thisWeekMonStart - 7 * 86400000;
+  const prevWeekEnd      = thisWeekMonStart;
+
+  const pwBars = klines1h.filter(k => {
+    const t = Number(k[0]);
+    return t >= prevWeekMonStart && t < prevWeekEnd;
+  });
+
+  const PWH = pwBars.length ? Math.max(...pwBars.map(k => parseFloat(k[2]))) : null;
+  const PWL = pwBars.length ? Math.min(...pwBars.map(k => parseFloat(k[3]))) : null;
+
+  return { PDH, PDL, PWH, PWL };
+}
+
+// ══════════════════════════════════════════════
+// LIQUIDITY POOLS — equal highs / equal lows
+// Cluster of swing points within 0.05% of each other
+// ══════════════════════════════════════════════
+function detectLiquidityPools(klines, lookback = 48, tolerance = 0.0005) {
+  const slice = klines.slice(-lookback);
+  const n = slice.length;
+  const price = parseFloat(klines[klines.length - 1][4]);
+
+  // Find swing highs and lows
+  const swingHighs = [], swingLows = [];
+  for (let i = 1; i < n - 1; i++) {
+    const ph = parseFloat(slice[i][2]);
+    const pl = parseFloat(slice[i][3]);
+    const prevH = parseFloat(slice[i-1][2]), nextH = parseFloat(slice[i+1][2]);
+    const prevL = parseFloat(slice[i-1][3]), nextL = parseFloat(slice[i+1][3]);
+    if (ph > prevH && ph > nextH) swingHighs.push(ph);
+    if (pl < prevL && pl < nextL) swingLows.push(pl);
+  }
+
+  // Cluster equal highs
+  const bsl = []; // buy-side liquidity (above price)
+  const ssl = []; // sell-side liquidity (below price)
+
+  function cluster(arr) {
+    const used = new Set();
+    const clusters = [];
+    for (let i = 0; i < arr.length; i++) {
+      if (used.has(i)) continue;
+      const group = [arr[i]];
+      for (let j = i + 1; j < arr.length; j++) {
+        if (Math.abs(arr[i] - arr[j]) / arr[i] <= tolerance) { group.push(arr[j]); used.add(j); }
+      }
+      if (group.length >= 2) clusters.push(group.reduce((a, b) => a + b, 0) / group.length);
+    }
+    return clusters;
+  }
+
+  const highClusters = cluster(swingHighs).filter(v => v > price).sort((a, b) => a - b).slice(0, 3);
+  const lowClusters  = cluster(swingLows).filter(v => v < price).sort((a, b) => b - a).slice(0, 3);
+
+  return {
+    bsl: highClusters.map(p => ({ price: p, type: 'BSL', label: 'Buy-Side Liq.' })),
+    ssl: lowClusters.map(p => ({ price: p, type: 'SSL', label: 'Sell-Side Liq.' })),
+  };
+}
+
+// ══════════════════════════════════════════════
+// PREMIUM / DISCOUNT CALCULATION
+// Based on the current daily range (NY anchor)
+// ══════════════════════════════════════════════
+function calcPremiumDiscount(klines1h, ivm) {
+  if (!ivm) return { pct: 50, label: 'EQUILIBRIUM', css: 'bias-eq' };
+  const price = ivm.currentPrice;
+  const high  = ivm.sessionHigh;
+  const low   = ivm.sessionLow;
+  const range = high - low;
+  if (range <= 0) return { pct: 50, label: 'EQUILIBRIUM', css: 'bias-eq' };
+  const pct = ((price - low) / range) * 100;
+  let label, css;
+  if (pct >= 62.5)      { label = 'PREMIUM — sell zone'; css = 'bias-premium'; }
+  else if (pct <= 37.5) { label = 'DISCOUNT — buy zone'; css = 'bias-discount'; }
+  else                  { label = 'EQUILIBRIUM'; css = 'bias-eq'; }
+  return { pct, label, css };
+}
+
+// ══════════════════════════════════════════════
+// OPTIMAL TRADE ENTRY (OTE) — 62–79% Fibonacci
+// of the most recent swing after MSS
+// ══════════════════════════════════════════════
+function calcOTE(klines, direction) {
+  const n = klines.length;
+  const slice = klines.slice(-20);
+  const highs  = slice.map(k => parseFloat(k[2]));
+  const lows   = slice.map(k => parseFloat(k[3]));
+  const swingH = Math.max(...highs);
+  const swingL = Math.min(...lows);
+  const range  = swingH - swingL;
+  if (direction === 'LONG') {
+    // OTE for longs: 62–79% retracement of bullish swing (price pulls back into discount)
+    return { lo: swingL + range * 0.21, hi: swingL + range * 0.38 }; // 62–79% fib = 21–38% from low
+  } else {
+    // OTE for shorts: 62–79% retracement of bearish swing
+    return { lo: swingH - range * 0.38, hi: swingH - range * 0.21 };
+  }
+}
+
+// ══════════════════════════════════════════════
+// ICT COMPREHENSIVE ANALYSIS ENGINE
+// Combines: killzone, premium/discount, HTF bias,
+// FVGs, PDH/PDL, liquidity pools, OTE, sessions
+// ══════════════════════════════════════════════
+function calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h) {
+  const price    = analysis1h.price;
+  const pFmt     = v => '$' + Math.round(v).toLocaleString('en-US');
+  const distP    = (v, ref) => { const p = ((v-ref)/ref*100); return (p>=0?'+':'')+p.toFixed(2)+'%'; };
+
+  // 1. Killzone
+  const kz = getKillzoneStatus();
+
+  // 2. Premium / Discount
+  const pd = calcPremiumDiscount(klines1h, ivm);
+
+  // 3. HTF bias (4H determines direction)
+  const htfBullish = analysis4h.label === 'BUY' || analysis4h.label === 'STRONG BUY';
+  const htfBearish = analysis4h.label === 'SELL' || analysis4h.label === 'STRONG SELL';
+  const htfNeutral = !htfBullish && !htfBearish;
+
+  // 4. Previous levels
+  const prev = calcPrevLevels(klines1h);
+
+  // 5. Fair Value Gaps
+  const fvgs = detectFVGs(klines1h, 30);
+  const bullFVGs = fvgs.filter(f => f.type === 'BULLISH').slice(0, 3);
+  const bearFVGs = fvgs.filter(f => f.type === 'BEARISH').slice(0, 3);
+
+  // 6. Liquidity pools
+  const liq = detectLiquidityPools(klines1h, 48);
+
+  // 7. Session context
+  const asianSession = sessions.find(s => s.id === 'asian');
+  const londonSession = sessions.find(s => s.id === 'london');
+
+  // ── DIRECTION DECISION ──
+  // ICT rule: trade in direction of HTF bias, only from discount (longs) or premium (shorts)
+  let direction = 'WAIT';
+  if (htfBullish && pd.pct <= 50)       direction = 'LONG';
+  else if (htfBearish && pd.pct >= 50)  direction = 'SHORT';
+  else if (htfBullish && pd.pct > 62.5) direction = 'WAIT'; // HTF bull but price in premium — wait for pullback
+  else if (htfBearish && pd.pct < 37.5) direction = 'WAIT'; // HTF bear but price in discount — wait for bounce
+  // Override: if 1H also strongly agrees, allow slightly off-zone
+  if (direction === 'WAIT' && htfBullish && analysis1h.label === 'STRONG BUY' && pd.pct < 60) direction = 'LONG';
+  if (direction === 'WAIT' && htfBearish && analysis1h.label === 'STRONG SELL' && pd.pct > 40) direction = 'SHORT';
+
+  // ── ENTRY, SL, TP ──
+  let entryLo, entryHi, entryMid, sl, tp1, tp2, liqTarget, entryReason, slReason;
+
+  if (direction === 'LONG') {
+    // Priority: nearest bullish FVG below price → then OTE zone → then VAL / VWAP
+    const nearFVG = bullFVGs.find(f => f.top < price);
+    const ote = calcOTE(klines1h, 'LONG');
+    if (nearFVG) {
+      entryLo = nearFVG.bot; entryHi = nearFVG.top; entryMid = nearFVG.mid;
+      entryReason = `Bullish FVG ${pFmt(nearFVG.bot)}–${pFmt(nearFVG.top)}`;
+    } else if (ivm && ivm.val < price) {
+      entryLo = ivm.val * 0.999; entryHi = ivm.val * 1.002; entryMid = ivm.val;
+      entryReason = `VAL / D-VWAP support ${pFmt(ivm.val)}`;
+    } else {
+      entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
+      entryReason = `OTE zone ${pFmt(ote.lo)}–${pFmt(ote.hi)}`;
+    }
+    // SL: below nearest SSL or swing low
+    const nearSSL = liq.ssl[0];
+    sl = nearSSL ? nearSSL.price * 0.998 : analysis1h.support * 0.997;
+    slReason = nearSSL ? `Below SSL ${pFmt(nearSSL.price)}` : `Below structure ${pFmt(analysis1h.support)}`;
+    // TP1: nearest BSL (buy-side liquidity) or PDH or VAH
+    const bslTarget = liq.bsl[0];
+    tp1 = bslTarget ? bslTarget.price : (prev.PDH && prev.PDH > price ? prev.PDH : (ivm ? ivm.vah : analysis1h.resistance));
+    tp2 = (prev.PDH && prev.PDH > tp1) ? prev.PDH : analysis1h.resistance;
+    liqTarget = liq.bsl.length ? liq.bsl[liq.bsl.length - 1].price : analysis1h.resistance;
+  } else if (direction === 'SHORT') {
+    const nearFVG = bearFVGs.find(f => f.bot > price);
+    const ote = calcOTE(klines1h, 'SHORT');
+    if (nearFVG) {
+      entryLo = nearFVG.bot; entryHi = nearFVG.top; entryMid = nearFVG.mid;
+      entryReason = `Bearish FVG ${pFmt(nearFVG.bot)}–${pFmt(nearFVG.top)}`;
+    } else if (ivm && ivm.vah > price) {
+      entryLo = ivm.vah * 0.999; entryHi = ivm.vah * 1.002; entryMid = ivm.vah;
+      entryReason = `VAH / D-VWAP resistance ${pFmt(ivm.vah)}`;
+    } else {
+      entryLo = ote.lo; entryHi = ote.hi; entryMid = (ote.lo + ote.hi) / 2;
+      entryReason = `OTE zone ${pFmt(ote.lo)}–${pFmt(ote.hi)}`;
+    }
+    const nearBSL = liq.bsl[0];
+    sl = nearBSL ? nearBSL.price * 1.002 : analysis1h.resistance * 1.003;
+    slReason = nearBSL ? `Above BSL ${pFmt(nearBSL.price)}` : `Above structure ${pFmt(analysis1h.resistance)}`;
+    const sslTarget = liq.ssl[0];
+    tp1 = sslTarget ? sslTarget.price : (prev.PDL && prev.PDL < price ? prev.PDL : (ivm ? ivm.val : analysis1h.support));
+    tp2 = (prev.PDL && prev.PDL < tp1) ? prev.PDL : analysis1h.support;
+    liqTarget = liq.ssl.length ? liq.ssl[liq.ssl.length - 1].price : analysis1h.support;
+  } else {
+    entryLo = entryHi = entryMid = sl = tp1 = tp2 = liqTarget = null;
+    entryReason = 'No setup'; slReason = '';
+  }
+
+  const rr = (tp1 && entryMid && sl) ? Math.abs(tp1 - entryMid) / Math.abs(entryMid - sl) : null;
+
+  // ── CONFLUENCE CHECKLIST (7 items) ──
+  const checklist = [
+    {
+      label: 'HTF Bias (4H)',
+      pass: !htfNeutral,
+      val: analysis4h.label,
+      color: htfBullish ? 'var(--green)' : htfBearish ? 'var(--red)' : 'var(--muted)',
+    },
+    {
+      label: 'Price in Correct Zone',
+      pass: direction !== 'WAIT',
+      val: direction === 'LONG' ? 'Discount ✓' : direction === 'SHORT' ? 'Premium ✓' : `${pd.pct.toFixed(0)}% — wait`,
+      color: direction !== 'WAIT' ? 'var(--green)' : 'var(--orange)',
+    },
+    {
+      label: 'Active Killzone',
+      pass: kz.live && kz.name !== 'NY Lunch',
+      val: kz.live ? kz.name : 'Outside KZ',
+      color: kz.live && kz.name !== 'NY Lunch' ? 'var(--accent)' : 'var(--muted)',
+    },
+    {
+      label: 'Fair Value Gap Present',
+      pass: direction === 'LONG' ? bullFVGs.length > 0 : direction === 'SHORT' ? bearFVGs.length > 0 : false,
+      val: direction === 'LONG' ? (bullFVGs.length ? `${bullFVGs.length} bullish FVG` : 'None nearby') : direction === 'SHORT' ? (bearFVGs.length ? `${bearFVGs.length} bearish FVG` : 'None nearby') : '—',
+      color: (direction === 'LONG' && bullFVGs.length) || (direction === 'SHORT' && bearFVGs.length) ? 'var(--green)' : 'var(--muted)',
+    },
+    {
+      label: 'Liquidity Sweep (SSL/BSL)',
+      pass: direction === 'LONG' ? liq.ssl.length > 0 : liq.bsl.length > 0,
+      val: direction === 'LONG' ? (liq.ssl.length ? `SSL ${pFmt(liq.ssl[0].price)}` : 'No SSL') : (liq.bsl.length ? `BSL ${pFmt(liq.bsl[0].price)}` : 'No BSL'),
+      color: (direction === 'LONG' && liq.ssl.length) || (direction === 'SHORT' && liq.bsl.length) ? 'var(--gold)' : 'var(--muted)',
+    },
+    {
+      label: 'PDH/PDL Respected',
+      pass: !!(prev.PDH && prev.PDL),
+      val: prev.PDH ? `PDH ${pFmt(prev.PDH)} · PDL ${pFmt(prev.PDL)}` : 'No prev data',
+      color: prev.PDH ? 'var(--accent)' : 'var(--muted)',
+    },
+    {
+      label: '1H Momentum Aligned',
+      pass: (direction === 'LONG' && (analysis1h.label === 'BUY' || analysis1h.label === 'STRONG BUY')) ||
+            (direction === 'SHORT' && (analysis1h.label === 'SELL' || analysis1h.label === 'STRONG SELL')),
+      val: analysis1h.label,
+      color: (analysis1h.label.includes('BUY') && direction === 'LONG') || (analysis1h.label.includes('SELL') && direction === 'SHORT') ? 'var(--green)' : 'var(--orange)',
+    },
+  ];
+
+  const passCount = checklist.filter(c => c.pass).length;
+
+  // ── COMPOSITE SCORE ──
+  let score = 0;
+  score += htfBullish || htfBearish ? 0.20 : 0;
+  score += direction !== 'WAIT' ? 0.20 : 0;
+  score += (kz.live && kz.name !== 'NY Lunch') ? 0.15 : 0;
+  score += ((direction === 'LONG' && bullFVGs.length) || (direction === 'SHORT' && bearFVGs.length)) ? 0.15 : 0;
+  score += passCount / 7 * 0.30;
+  const scorePct = Math.round(score * 100);
+
+  // ── ACTION ──
+  let action, ictColor, isStrong = false;
+  if (direction === 'WAIT' || passCount < 3)   { action = 'WAIT / FLAT'; ictColor = '#90a4ae'; }
+  else if (direction === 'LONG' && passCount >= 6)  { action = 'STRONG BUY'; ictColor = '#00e676'; isStrong = true; }
+  else if (direction === 'LONG' && passCount >= 4)  { action = 'BUY'; ictColor = '#69f0ae'; }
+  else if (direction === 'SHORT' && passCount >= 6) { action = 'STRONG SELL'; ictColor = '#ff3d5a'; isStrong = true; }
+  else if (direction === 'SHORT' && passCount >= 4) { action = 'SELL'; ictColor = '#ff6e6e'; }
+  else { action = 'WAIT / FLAT'; ictColor = '#90a4ae'; }
+
+  // ── REASONING ──
+  let reasoning = '';
+  if (action === 'WAIT / FLAT') {
+    let waitReason = '';
+    if (htfNeutral) waitReason = `4H is <b>NEUTRAL</b> — no clear HTF bias. ICT requires a defined directional draw before entry.`;
+    else if (direction === 'WAIT' && htfBullish) waitReason = `4H is <b>BULLISH</b> but price is at <b>${pd.pct.toFixed(0)}% (Premium)</b> — too expensive to buy. Wait for pullback to discount (below 50%).`;
+    else if (direction === 'WAIT' && htfBearish) waitReason = `4H is <b>BEARISH</b> but price is at <b>${pd.pct.toFixed(0)}% (Discount)</b> — too low to short. Wait for bounce to premium (above 50%).`;
+    else waitReason = `Only <b>${passCount}/7</b> confluence factors confirmed. Need ≥4 for a valid ICT setup.`;
+    if (!kz.live) waitReason += ` Also outside killzone — next is <b>${kz.nextName}</b> in ${kz.minsUntil}min.`;
+    reasoning = `<b>No trade — stay flat.</b> ${waitReason}`;
+  } else {
+    const dir = direction === 'LONG' ? '↑ LONG' : '↓ SHORT';
+    const kzNote = kz.live ? `<b>Active killzone: ${kz.name}</b> — high probability window.` : `⚠ Outside killzone — next <b>${kz.nextName}</b> in ${kz.minsUntil}min. Consider waiting.`;
+    const pdNote = `Price at <b>${pd.pct.toFixed(0)}%</b> of daily range (${pd.label.split(' ')[0]}).`;
+    const entNote = entryMid ? `Entry: <b>${pFmt(entryLo)}–${pFmt(entryHi)}</b> (${entryReason}).` : '';
+    const slNote  = sl ? `SL: <b>${pFmt(sl)}</b> — ${slReason}.` : '';
+    const tp1Note = tp1 ? `TP1: <b>${pFmt(tp1)}</b>${rr ? ` (1:${rr.toFixed(1)} R)` : ''}.` : '';
+    const tp2Note = tp2 ? ` TP2: <b>${pFmt(tp2)}</b>.` : '';
+    const liqNote = liqTarget ? ` Draw on liquidity toward <b>${pFmt(liqTarget)}</b>.` : '';
+    const prevNote = prev.PDH ? ` PDH <b>${pFmt(prev.PDH)}</b> · PDL <b>${pFmt(prev.PDL)}</b> — key magnets.` : '';
+    reasoning = `<b>${dir} setup — ${passCount}/7 confluence.</b> ${kzNote} ${pdNote} ${entNote} ${slNote} ${tp1Note}${tp2Note}${liqNote}${prevNote}`;
+  }
+
+  return {
+    action, ictColor, isStrong, scorePct, direction, passCount,
+    kz, pd, prev, fvgs, bullFVGs, bearFVGs, liq, checklist,
+    entryLo, entryHi, entryMid, sl, tp1, tp2, liqTarget, rr,
+    entryReason, slReason, reasoning,
+  };
+}
+
+// ══════════════════════════════════════════════
+// UPDATE ICT PANEL UI
+// ══════════════════════════════════════════════
+function updateICTPanel(ict) {
+  const pFmt  = v => '$' + Math.round(v).toLocaleString('en-US');
+  const distP = (v, ref) => { const p = ((v-ref)/ref*100); return (p>=0?'+':'')+p.toFixed(2)+'%'; };
+
+  // Panel color
+  const panel = document.getElementById('ict-panel');
+  panel.style.setProperty('--ict-color', ict.ictColor);
+  panel.className = 'ict-panel' + (ict.isStrong ? ' strong' : '');
+
+  // Timestamp
+  document.getElementById('ict-time').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  // Killzone badge
+  const kzBadge = document.getElementById('kz-badge');
+  if (ict.kz.live) {
+    kzBadge.textContent = '● ' + ict.kz.name;
+    kzBadge.className = 'kz-badge kz-live';
+    kzBadge.style.color = ict.kz.color;
+    kzBadge.style.borderColor = ict.kz.color;
+    kzBadge.style.background = ict.kz.color + '18';
+    document.getElementById('kz-countdown').innerHTML = `<b>${ict.kz.minsLeft}min left</b> · ${ict.kz.desc}`;
+  } else {
+    kzBadge.textContent = '◌ NO KILLZONE';
+    kzBadge.className = 'kz-badge kz-dead';
+    kzBadge.style.color = '';
+    kzBadge.style.borderColor = '';
+    kzBadge.style.background = '';
+    document.getElementById('kz-countdown').innerHTML = `Next: <b>${ict.kz.nextName}</b> in ${ict.kz.minsUntil}min`;
+  }
+
+  // Premium/discount bias pill
+  const pdPill = document.getElementById('pd-bias-pill');
+  pdPill.textContent = ict.pd.label.split(' ')[0].toUpperCase();
+  pdPill.className = 'bias-pill ' + ict.pd.css;
+
+  // PD gauge
+  const thumbPct = Math.max(2, Math.min(98, ict.pd.pct));
+  document.getElementById('pd-thumb').style.left = thumbPct + '%';
+  const pdLabel = document.getElementById('pd-value-label');
+  pdLabel.innerHTML = `Price at <b style="color:${ict.pd.css === 'bias-premium' ? 'var(--red)' : ict.pd.css === 'bias-discount' ? 'var(--green)' : 'var(--gold)'}">${ict.pd.pct.toFixed(1)}%</b> of daily range — ${ict.pd.label}`;
+
+  // Action
+  document.getElementById('ict-action').textContent = ict.action;
+  document.getElementById('ict-action').style.color = ict.ictColor;
+  document.getElementById('ict-score-val').textContent = ict.scorePct + '%';
+  document.getElementById('ict-mini-fill').style.width = ict.scorePct + '%';
+  document.getElementById('ict-mini-fill').style.background = ict.ictColor;
+
+  // Pills
+  const pills = [
+    { l: '4H: ' + (ict.direction !== 'WAIT' ? ict.direction : 'WAIT'), a: ict.direction !== 'WAIT' },
+    { l: ict.pd.pct.toFixed(0) + '% Range', a: ict.direction !== 'WAIT' },
+    ict.kz.live ? { l: ict.kz.name, a: true } : { l: 'No KZ', a: false },
+    { l: 'FVG: ' + ict.fvgs.length, a: ict.fvgs.length > 0 },
+    { l: 'BSL: ' + ict.liq.bsl.length + ' SSL: ' + ict.liq.ssl.length, a: true },
+    { l: ict.passCount + '/7 checks', a: ict.passCount >= 4 },
+  ].filter(Boolean);
+  document.getElementById('ict-pills').innerHTML = pills.map(p =>
+    `<span class="cmd-pill${p.a ? ' active-pill' : ''}" style="${p.a ? '--cmd-color:'+ict.ictColor : ''}">${p.l}</span>`
+  ).join('');
+
+  // Trade levels
+  const price = lastPrice;
+  if (ict.entryMid && ict.direction !== 'WAIT') {
+    document.getElementById('ict-entry').textContent = `${pFmt(ict.entryLo)}–${pFmt(ict.entryHi)}`;
+    document.getElementById('ict-entry-sub').textContent = ict.entryReason;
+    document.getElementById('ict-sl').textContent = pFmt(ict.sl);
+    document.getElementById('ict-sl-sub').textContent = ict.slReason;
+    document.getElementById('ict-tp1').textContent = pFmt(ict.tp1);
+    document.getElementById('ict-tp1-sub').textContent = ict.rr ? `R:R 1:${ict.rr.toFixed(2)}` : '1st target';
+    document.getElementById('ict-tp2').textContent = ict.tp2 ? pFmt(ict.tp2) : '—';
+    document.getElementById('ict-tp2-sub').textContent = '2nd target';
+    document.getElementById('ict-liq-target').textContent = ict.liqTarget ? pFmt(ict.liqTarget) : '—';
+    document.getElementById('ict-rr').textContent = ict.rr ? '1 : ' + ict.rr.toFixed(2) : '—';
+    document.getElementById('ict-rr-sub').textContent = ict.rr >= 3 ? '✦ Excellent' : ict.rr >= 2 ? '✓ Good' : ict.rr >= 1.5 ? 'Acceptable' : '⚠ Risky';
+  } else {
+    ['ict-entry','ict-sl','ict-tp1','ict-tp2','ict-liq-target','ict-rr'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    document.getElementById('ict-entry-sub').textContent = 'No setup';
+    document.getElementById('ict-sl-sub').textContent = '';
+    document.getElementById('ict-tp1-sub').textContent = '';
+    document.getElementById('ict-tp2-sub').textContent = '';
+    document.getElementById('ict-rr-sub').textContent = '';
+  }
+
+  // Reasoning
+  const reasonEl = document.getElementById('ict-reasoning');
+  reasonEl.innerHTML = ict.reasoning;
+  reasonEl.style.borderLeftColor = ict.ictColor;
+  reasonEl.querySelectorAll('b').forEach(b => b.style.color = ict.ictColor);
+
+  // Checklist
+  document.getElementById('ict-check-score').textContent = ict.passCount + '/7';
+  document.getElementById('ict-checklist').innerHTML = ict.checklist.map(c => `
+    <div class="ict-check-row">
+      <span class="ict-check-icon">${c.pass ? '✓' : '○'}</span>
+      <span class="ict-check-label">${c.label}</span>
+      <span class="ict-check-val" style="color:${c.color};">${c.val}</span>
+    </div>
+  `).join('');
+
+  // PDH/PDL/PWH/PWL
+  const { PDH, PDL, PWH, PWL } = ict.prev;
+  const pdLevels = [
+    PDH ? { tag: 'Prev Day High (PDH)', price: PDH, color: '#ff6e6e', dist: distP(PDH, price) } : null,
+    PDL ? { tag: 'Prev Day Low (PDL)',  price: PDL, color: '#69f0ae', dist: distP(PDL, price) } : null,
+    PWH ? { tag: 'Prev Week High (PWH)',price: PWH, color: '#ff3d5a', dist: distP(PWH, price) } : null,
+    PWL ? { tag: 'Prev Week Low (PWL)', price: PWL, color: '#00e676', dist: distP(PWL, price) } : null,
+  ].filter(Boolean).sort((a, b) => b.price - a.price);
+  document.getElementById('pdhl-list').innerHTML = pdLevels.length
+    ? pdLevels.map(l => `
+      <div class="pdhl-row">
+        <span class="pdhl-tag">${l.tag}</span>
+        <span class="pdhl-price" style="color:${l.color};">${pFmt(l.price)}</span>
+        <span class="pdhl-dist">${l.dist}</span>
+      </div>`).join('')
+    : '<div class="fvg-empty">Loading previous day data…</div>';
+
+  // FVGs
+  document.getElementById('fvg-count-badge').textContent = ict.fvgs.length + ' active';
+  document.getElementById('fvg-list').innerHTML = ict.fvgs.length
+    ? ict.fvgs.map(f => `
+      <div class="fvg-row">
+        <div class="fvg-header">
+          <span class="fvg-type" style="color:${f.type==='BULLISH'?'var(--green)':'var(--red)'};">${f.type === 'BULLISH' ? '↑' : '↓'} ${f.type} FVG</span>
+          <span class="fvg-age">${f.age}h ago · ${distP(f.mid, price)} from price</span>
+        </div>
+        <div class="fvg-levels">
+          <div class="fvg-cell"><span class="fvg-cell-lbl">Top</span><span class="fvg-cell-val" style="color:var(--red);">${pFmt(f.top)}</span></div>
+          <div class="fvg-cell"><span class="fvg-cell-lbl">Mid (entry)</span><span class="fvg-cell-val" style="color:var(--gold);">${pFmt(f.mid)}</span></div>
+          <div class="fvg-cell"><span class="fvg-cell-lbl">Bot</span><span class="fvg-cell-val" style="color:var(--green);">${pFmt(f.bot)}</span></div>
+        </div>
+      </div>`).join('')
+    : '<div class="fvg-empty">No unmitigated FVGs in last 30 candles</div>';
+
+  // Liquidity pools
+  const allLiq = [...ict.liq.bsl.map(l => ({ ...l, above: true })), ...ict.liq.ssl.map(l => ({ ...l, above: false }))].sort((a, b) => b.price - a.price);
+  document.getElementById('liq-count-badge').textContent = allLiq.length + ' pools';
+  document.getElementById('liq-list').innerHTML = allLiq.length
+    ? allLiq.map(l => `
+      <div class="liq-row">
+        <span class="liq-icon">${l.above ? '▲' : '▼'}</span>
+        <span class="liq-tag">${l.label}</span>
+        <span class="liq-price" style="color:${l.above ? 'var(--red)' : 'var(--green)'};">${pFmt(l.price)}</span>
+        <span class="liq-dist" style="color:var(--muted);">${distP(l.price, price)}</span>
+      </div>`).join('')
+    : '<div class="fvg-empty">No equal H/L clusters found</div>';
+
+  // Lock button
+  const lockBtn = document.getElementById('ict-lock-btn');
+  const canLock = ict.action !== 'WAIT / FLAT' && ict.entryMid !== null;
+  lockBtn.disabled = !canLock;
+  lockBtn.style.setProperty('--ict-color', canLock ? ict.ictColor : '#4a6070');
+  lockBtn.style.color = canLock ? ict.ictColor : '#4a6070';
+  lockBtn.style.borderColor = canLock ? ict.ictColor : '#253040';
+  lockBtn.textContent = canLock
+    ? `⊕ Lock "${ict.action}" ICT Setup as Trade Plan`
+    : '⊘ No Actionable ICT Setup';
+
+  // Store for lock
+  _lastICTSnap = ict;
+}
+
+// ── Killzone countdown (updates every 30s) ──
+function updateKillzoneCountdown() {
+  const kz = getKillzoneStatus();
+  const badge = document.getElementById('kz-badge');
+  const countdown = document.getElementById('kz-countdown');
+  if (!badge) return;
+  if (kz.live) {
+    countdown.innerHTML = `<b>${kz.minsLeft}min left</b> · ${kz.desc}`;
+  } else {
+    countdown.innerHTML = `Next: <b>${kz.nextName}</b> in ${kz.minsUntil}min`;
+  }
+}
+setInterval(updateKillzoneCountdown, 30000);
+
+// ──────────────────────────────────────────────
+// ICT LOCK SETUP
+// ──────────────────────────────────────────────
+let _lastICTSnap = null;
+
+function lockICTSetup() {
+  if (!_lastICTSnap || _lastICTSnap.action === 'WAIT / FLAT' || !_lastICTSnap.entryMid) return;
+  const ict = _lastICTSnap;
+  const isLong = ict.direction === 'LONG';
+
+  const setup = {
+    id:          Date.now(),
+    action:      ict.action,
+    direction:   isLong ? 'LONG' : 'SHORT',
+    color:       ict.ictColor,
+    entryPrice:  ict.entryMid,
+    entryZoneLo: ict.entryLo,
+    entryZoneHi: ict.entryHi,
+    slPrice:     ict.sl,
+    tp1Price:    ict.tp1,
+    tp2Price:    ict.tp2,
+    rr:          ict.rr,
+    lockedAt:    new Date().toLocaleTimeString(),
+    lockedPrice: lastPrice,
+    reasoning:   ict.reasoning,
+    status:      'WAITING',
+    entryHitAt:  null,
+  };
+
+  _lockedSetups.unshift(setup);
+  renderSetupPlanner();
+  requestNotificationPermission();
+}
+
 // ──────────────────────────────────────────────
 // MAIN UPDATE LOOP
 // ──────────────────────────────────────────────
@@ -2803,7 +3609,7 @@ async function update() {
   try {
     const [tickerData, klines1h, klines4h] = await Promise.all([
       fetchTicker(),
-      fetchKlines('1h', 250),
+      fetchKlines('1h', 300),   // extra bars for PDH/PDL (need ~48h)
       fetchKlines('4h', 150)
     ]);
     updateTickerUI(tickerData);
@@ -2814,11 +3620,17 @@ async function update() {
     updateMTF(analysis1h, analysis4h);
     const ivm = calcIVM(klines1h);
     updateIVM(ivm);
-    updateCommandSummary(analysis1h, analysis4h, ivm);
 
-    // ── Session Levels ──
+    // Session Levels
     const sessions = calcSessions(klines1h);
     updateSessionsUI(sessions);
+
+    // ICT Comprehensive Analysis
+    const ict = calcICTAnalysis(analysis1h, analysis4h, ivm, sessions, klines1h);
+    updateICTPanel(ict);
+
+    // Legacy command summary hidden — ICT panel replaces it
+    updateCommandSummary(analysis1h, analysis4h, ivm);
 
   } catch (e) {
     console.error('Update error', e);
@@ -2838,9 +3650,22 @@ setInterval(async () => {
           : k
       );
       updateIVM(calcIVM(patched));
-      // Re-render session strips with updated price (cheap — no recalc of H/L)
       const sessions = calcSessions(_cachedKlines1h);
       updateSessionsUI(sessions);
+      // Lightweight ICT refresh (price-dependent elements only)
+      if (_lastICTSnap) {
+        const ivm2 = calcIVM(patched);
+        const pd2  = calcPremiumDiscount(patched, ivm2);
+        _lastICTSnap.pd = pd2;
+        const thumbPct = Math.max(2, Math.min(98, pd2.pct));
+        const thumb = document.getElementById('pd-thumb');
+        if (thumb) thumb.style.left = thumbPct + '%';
+        const pdLabel = document.getElementById('pd-value-label');
+        if (pdLabel) pdLabel.innerHTML = `Price at <b style="color:${pd2.css==='bias-premium'?'var(--red)':pd2.css==='bias-discount'?'var(--green)':'var(--gold)'}">${pd2.pct.toFixed(1)}%</b> of daily range — ${pd2.label}`;
+        const pdPill = document.getElementById('pd-bias-pill');
+        if (pdPill) { pdPill.textContent = pd2.label.split(' ')[0].toUpperCase(); pdPill.className = 'bias-pill ' + pd2.css; }
+        updateKillzoneCountdown();
+      }
     }
     tickSetups();
   } catch (e) {}
