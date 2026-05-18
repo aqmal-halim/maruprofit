@@ -275,55 +275,7 @@ header {
 }
 .rec-summary b { color:var(--accent); }
 
-/* ── CONFIRMED EDGE PANEL ── */
-.edge-wrap { padding:12px; display:flex; flex-direction:column; gap:8px; }
-.edge-card {
-  display:flex; align-items:center; gap:10px;
-  padding:10px 12px; border-radius:8px;
-  border:1px solid var(--border);
-  background:rgba(0,0,0,0.15);
-  position:relative; overflow:hidden;
-  transition:border-color 0.3s;
-}
-.edge-card::before {
-  content:''; position:absolute; left:0;top:0;bottom:0; width:3px;
-  background:var(--e-color,var(--border2));
-}
-.edge-card:hover { border-color:var(--e-color,var(--border2)); }
-.edge-pair {
-  font-family:'Syne',sans-serif;font-weight:700;font-size:0.78rem;
-  letter-spacing:1.5px;text-transform:uppercase;
-  color:var(--e-color,var(--text));min-width:70px;
-}
-.edge-metrics { display:flex; gap:10px; flex:1; flex-wrap:wrap; }
-.edge-metric { text-align:center; }
-.edge-metric-val { display:block;font-family:'Space Mono',monospace;font-weight:700;font-size:0.82rem; }
-.edge-metric-lbl { display:block;font-size:0.52rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-top:1px; }
-.edge-filters { display:flex;gap:4px;flex-wrap:wrap;margin-left:auto; }
-.edge-chip {
-  font-family:'Space Mono',monospace;font-size:0.52rem;padding:2px 6px;
-  border-radius:4px;background:rgba(0,0,0,0.3);
-  color:var(--muted);border:1px solid var(--border2);
-}
-.edge-chip.on { color:var(--e-color,var(--accent));border-color:var(--e-color,var(--accent)); }
-.edge-engines { display:flex;gap:4px; }
-.engine-badge {
-  font-size:0.52rem;padding:2px 7px;border-radius:4px;
-  font-family:'Space Mono',monospace;font-weight:700;letter-spacing:1px;
-}
-.engine-p { background:rgba(255,214,0,0.1);color:var(--gold);border:1px solid rgba(255,214,0,0.3); }
-.engine-s { background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.3); }
-.engine-short { background:rgba(255,61,90,0.1);color:var(--red);border:1px solid rgba(255,61,90,0.25); }
 
-/* ── PORTFOLIO SUMMARY ── */
-.port-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px; }
-.port-card {
-  background:var(--panel2);border:1px solid var(--border);
-  border-radius:8px;padding:12px 10px;text-align:center;position:relative;overflow:hidden;
-}
-.port-card::after { content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--acc-line,var(--border2)); }
-.port-val { display:block;font-family:'Space Mono',monospace;font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:4px; }
-.port-lbl { font-size:0.58rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted); }
 
 /* ── INDICATORS ── */
 .indicators-grid { display:flex;flex-direction:column;gap:6px;padding:12px; }
@@ -463,17 +415,7 @@ header {
 .calc-out-label { font-size:0.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px; }
 .calc-out-val   { font-family:'Space Mono',monospace;font-weight:700;font-size:0.83rem; }
 
-/* ── MARUPROFIT FILTER BOX ── */
-.mf-box {
-  background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:8px;
-  padding:12px 14px;margin:12px;margin-top:0;
-}
-.mf-title { font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px; }
-.mf-row   { display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;font-size:0.7rem;line-height:1.6; }
-.mf-row:last-child { margin-bottom:0; }
-.mf-key   { color:var(--muted);white-space:nowrap;min-width:110px; }
-.mf-val   { color:var(--text);font-family:'Space Mono',monospace;font-size:0.65rem;flex:1; }
-.mf-val b { color:var(--pair-active-color,var(--accent)); }
+
 
 /* ── STOCH RSI ── */
 .srsi-panel { background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px; }
@@ -549,11 +491,7 @@ footer { text-align:center;padding:16px;font-size:0.58rem;color:var(--muted);let
         <div class="pair-change" id="pair-pct-big">0.00%</div>
       </div>
     </div>
-    <!-- Maruprofit confirmed edge config for this pair -->
-    <div class="mf-box" id="mf-config-box">
-      <div class="mf-title">Confirmed Edge Configuration</div>
-      <div id="mf-config-rows"></div>
-    </div>
+
   </div>
 
   <!-- MASTER SIGNAL -->
@@ -743,20 +681,7 @@ footer { text-align:center;padding:16px;font-size:0.58rem;color:var(--muted);let
     </div>
   </div>
 
-  <!-- PORTFOLIO CONFIRMED EDGES -->
-  <div class="panel">
-    <div class="panel-header">
-      <span class="panel-title">Portfolio — Confirmed Edges</span>
-      <span class="panel-badge">5 Pairs · $50 Risk</span>
-    </div>
-    <div class="edge-wrap" id="edge-wrap"></div>
-    <div class="port-grid">
-      <div class="port-card" style="--acc-line:var(--green);"><span class="port-val" style="color:var(--green);">+$7,150</span><span class="port-lbl">Total Backtest PnL</span></div>
-      <div class="port-card" style="--acc-line:var(--accent);"><span class="port-val" style="color:var(--accent);">+$1,299</span><span class="port-lbl">Est. Monthly PnL</span></div>
-      <div class="port-card" style="--acc-line:var(--gold);"><span class="port-val">71.4%</span><span class="port-lbl">Portfolio Win Rate</span></div>
-      <div class="port-card" style="--acc-line:var(--orange);"><span class="port-val">2.60</span><span class="port-lbl">Avg Profit Factor</span></div>
-    </div>
-  </div>
+
 
   <!-- RISK CALCULATOR -->
   <div class="panel">
@@ -835,13 +760,6 @@ const PAIRS = [
     monthly: 355,
     engines: ['PRIMARY', 'SECONDARY'],
     direction: 'Both',
-    filters: {
-      'Entry Type': 'BB×POC Primary + Sweep Secondary',
-      'Direction':  'Both (Longs & Shorts)',
-      'Sessions':   'London + NY',
-      'Filters':    'CD ≤ 0.04×ATR · Body ≥ 1.1×ATR',
-    },
-    worstStreak: 3, bestStreak: 17,
   },
   {
     id: 'XAUUSD',
@@ -857,13 +775,6 @@ const PAIRS = [
     monthly: 236,
     engines: ['PRIMARY', 'SECONDARY'],
     direction: 'Both',
-    filters: {
-      'Entry Type': 'BB×POC Primary + Sweep Secondary',
-      'Direction':  'Both (Longs & Shorts)',
-      'Sessions':   'Asian Session',
-      'Filters':    'BBW ≤ 0.9% · CD ≤ 0.25×ATR · Body ≥ 0.9×ATR · Zone ≤ 0.5',
-    },
-    worstStreak: 3, bestStreak: 8,
   },
   {
     id: 'GBPUSD',
@@ -879,13 +790,6 @@ const PAIRS = [
     monthly: 236,
     engines: ['PRIMARY', 'SECONDARY'],
     direction: 'Both',
-    filters: {
-      'Entry Type': 'BB×POC Primary + Sweep Secondary',
-      'Direction':  'Both (Longs & Shorts)',
-      'Sessions':   'London + NY',
-      'Filters':    'BBW ≤ 0.3% · CD ≤ 0.07×ATR',
-    },
-    worstStreak: 3, bestStreak: 8,
   },
   {
     id: 'GBPJPY',
@@ -901,13 +805,6 @@ const PAIRS = [
     monthly: 245,
     engines: ['PRIMARY', 'SECONDARY'],
     direction: 'Both',
-    filters: {
-      'Entry Type': 'BB×POC Primary (Longs Only) + Sweep Secondary',
-      'Direction':  'Primary: Longs Only · Secondary: Both',
-      'Sessions':   'Asian + London (Primary) · London + NY (Secondary)',
-      'Filters':    'CD ≤ 0.06×ATR · Body ≤ 1.2×ATR',
-    },
-    worstStreak: 5, bestStreak: 14,
   },
   {
     id: 'EURAUD',
@@ -923,13 +820,6 @@ const PAIRS = [
     monthly: 227,
     engines: ['PRIMARY', 'SECONDARY'],
     direction: 'Shorts Only',
-    filters: {
-      'Entry Type': 'BB×POC Primary + Sweep Secondary',
-      'Direction':  'Shorts Only (both engines)',
-      'Sessions':   'Asian + NY (no London)',
-      'Filters':    'CD ≤ 0.1×ATR · Body ≤ 1.2×ATR',
-    },
-    worstStreak: 2, bestStreak: 7,
   },
 ];
 
@@ -1330,30 +1220,7 @@ function renderPairSelector(){
   }).join('');
 }
 
-// ═══════════════════════════════════════════════
-// RENDER CONFIRMED EDGE CARDS
-// ═══════════════════════════════════════════════
-function renderEdgeCards(){
-  const wrap=document.getElementById('edge-wrap');
-  wrap.innerHTML=PAIRS.map((p,i)=>{
-    const isActive=i===activePairIdx;
-    const dirShort=p.direction==='Shorts Only'?'SHORT':p.direction==='Both'?'BOTH':'LONG';
-    const dirColor=dirShort==='SHORT'?'var(--red)':dirShort==='BOTH'?'var(--accent)':'var(--green)';
-    return `<div class="edge-card" style="--e-color:${p.color};${isActive?'border-color:'+p.color+';background:rgba(0,0,0,0.25);':''}" onclick="selectPair(${i})">
-      <div class="edge-pair">${p.name}</div>
-      <div class="edge-metrics">
-        <div class="edge-metric"><span class="edge-metric-val" style="color:var(--green);">${p.wr}%</span><span class="edge-metric-lbl">WR</span></div>
-        <div class="edge-metric"><span class="edge-metric-val" style="color:var(--gold);">${p.pf}</span><span class="edge-metric-lbl">PF</span></div>
-        <div class="edge-metric"><span class="edge-metric-val">+${p.avgR}R</span><span class="edge-metric-lbl">Avg R</span></div>
-        <div class="edge-metric"><span class="edge-metric-val" style="color:${dirColor};font-size:0.7rem;">${dirShort}</span><span class="edge-metric-lbl">Dir</span></div>
-      </div>
-      <div class="edge-engines">
-        ${p.engines.map(e=>`<span class="engine-badge ${e==='PRIMARY'?'engine-p':'engine-s'}">${e==='PRIMARY'?'BB×POC':'SWEEP'}</span>`).join('')}
-        ${p.direction==='Shorts Only'?'<span class="engine-badge engine-short">SHORT</span>':''}
-      </div>
-    </div>`;
-  }).join('');
-}
+
 
 // ═══════════════════════════════════════════════
 // UPDATE SIGNAL UI
@@ -1381,9 +1248,7 @@ function updateSignalUI(analysis, pair){
   else if(label==='NEUTRAL')rec=`<b>→ NEUTRAL</b> — Wait for break above <b>${pF(resistance)}</b> or below <b>${pF(support)}</b>.`;
   else if(label==='SELL')rec=`<b>↓ SELL</b> — ${sellCount}/${signals.length} bearish. StochRSI %K ${stochK.toFixed(1)} crossing below %D ${stochD.toFixed(1)}.`;
   else rec=`<b>↓ STRONG SELL</b> — ${sellCount}/${signals.length} bearish. RSI ${rsi.toFixed(1)}, %K ${stochK.toFixed(1)}.`;
-  // Pair-specific edge note
-  const edgeNote=getPairEdgeNote(pair,label,stochK,stochD,rsi);
-  document.getElementById('rec-summary').innerHTML=rec+'<br><span style="color:var(--gold);font-size:0.65rem;">◆ Maruprofit filter: '+edgeNote+'</span>';
+  document.getElementById('rec-summary').innerHTML=rec;
   document.getElementById('rec-summary').style.borderLeftColor=color;
   // Indicators
   document.getElementById('indicators-grid').innerHTML=signals.map(s=>`
@@ -1426,12 +1291,7 @@ function updateSignalUI(analysis, pair){
   ].map(r=>`<div class="regime-row"><div class="regime-dot" style="background:${r.color};box-shadow:0 0 5px ${r.color};"></div><span style="font-size:0.68rem;color:var(--muted);flex:1;">${r.label}</span><span style="font-family:'Space Mono',monospace;font-size:0.73rem;color:${r.color};">${r.val}</span></div>`).join('');
 }
 
-function getPairEdgeNote(pair,label,k,d,rsi){
-  const dir=pair.direction==='Shorts Only'?'SHORT ONLY ↓':pair.direction==='Both'?'BOTH SIDES':'LONG ONLY ↑';
-  const inEdge=(pair.direction==='Shorts Only'&&(label==='SELL'||label==='STRONG SELL'))||(pair.direction==='Both')||(pair.direction==='Long'&&(label==='BUY'||label==='STRONG BUY'));
-  const status=inEdge?'✓ Signal aligns with confirmed direction':'⚠ Direction mismatch — skip this signal';
-  return `${dir} · PF ${pair.pf} · WR ${pair.wr}% · ${status}`;
-}
+
 
 // ═══════════════════════════════════════════════
 // STOCH RSI CHART
@@ -1597,20 +1457,9 @@ function updateIVM(ivm,pair){
 }
 
 // ═══════════════════════════════════════════════
-// PAIR CONFIG BOX
+// PAIR CONFIG (name + type only — no edge data)
 // ═══════════════════════════════════════════════
 function renderPairConfig(pair){
-  const colorStyle=`color:${pair.color};`;
-  const rows=Object.entries(pair.filters).map(([k,v])=>`
-    <div class="mf-row">
-      <span class="mf-key">${k}</span>
-      <span class="mf-val">${v}</span>
-    </div>`).join('');
-  const stats=`<div class="mf-row">
-    <span class="mf-key">Confirmed Stats</span>
-    <span class="mf-val"><b>WR ${pair.wr}%</b> · <b>PF ${pair.pf}</b> · <b>+${pair.trades}T</b> · Avg R <b>+${pair.avgR}R</b> · Best ${pair.bestStreak}W / Worst ${pair.worstStreak}L</span>
-  </div>`;
-  document.getElementById('mf-config-rows').innerHTML=rows+stats;
   document.getElementById('pair-name-big').textContent=pair.name;
   document.getElementById('pair-name-big').style.color=pair.color;
   document.getElementById('pair-type-label').textContent=pair.type.toUpperCase();
@@ -1652,7 +1501,6 @@ async function selectPair(idx){
   activePairIdx=idx;
   const pair=PAIRS[idx];
   renderPairSelector();
-  renderEdgeCards();
   renderPairConfig(pair);
   initTVChart(pair);
   await updatePairData(pair,true);
@@ -1819,7 +1667,6 @@ function calcPosition(){
 // ═══════════════════════════════════════════════
 async function init(){
   renderPairSelector();
-  renderEdgeCards();
   const pair=PAIRS[activePairIdx];
   renderPairConfig(pair);
   initTVChart(pair);
