@@ -278,32 +278,54 @@ document.querySelectorAll("#srcSeg button").forEach(b=>b.onclick=()=>{
   if(!live) refresh(SAMPLE);
 });
 
-// live fetch (Financial Modeling Prep). Experimental — verify endpoints for your plan.
+// live fetch (Financial Modeling Prep). Pulls fundamentals + real price history.
 document.getElementById("loadBtn").onclick = async ()=>{
   const key=document.getElementById("apiKey").value.trim();
   const tks=document.getElementById("tickers").value.split(/[,\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
   const note=document.getElementById("srcNote");
-  if(!key||!tks.length){ note.textContent="Enter both an API key and at least two tickers."; return; }
-  note.textContent="Loading "+tks.length+" tickers…";
+  if(!key||tks.length<2){ note.textContent="Enter an API key and at least two tickers."; return; }
+  note.textContent="Loading "+tks.length+" tickers… (a few calls each — give it a moment)";
+  const base="https://financialmodelingprep.com/api/v3";
+  const J=async u=>{ try{const r=await fetch(u); return await r.json();}catch(e){return null;} };
+  const num=v=>(typeof v==="number"&&isFinite(v))?v:undefined;
   try{
-    const out=[];
+    const out=[]; let realFund=0, realPx=0;
     for(const t of tks){
-      const [prof,ratio,quote] = await Promise.all([
-        fetch(`https://financialmodelingprep.com/api/v3/profile/${t}?apikey=${key}`).then(r=>r.json()),
-        fetch(`https://financialmodelingprep.com/api/v3/ratios-ttm/${t}?apikey=${key}`).then(r=>r.json()),
-        fetch(`https://financialmodelingprep.com/api/v3/quote/${t}?apikey=${key}`).then(r=>r.json())
+      const [prof,km,rt,hist] = await Promise.all([
+        J(`${base}/profile/${t}?apikey=${key}`),
+        J(`${base}/key-metrics-ttm/${t}?apikey=${key}`),
+        J(`${base}/ratios-ttm/${t}?apikey=${key}`),
+        J(`${base}/historical-price-full/${t}?serietype=line&timeseries=300&apikey=${key}`)
       ]);
-      const p=prof[0]||{}, rt=ratio[0]||{}, q=quote[0]||{};
+      const p=(prof&&prof[0])||{}, k=(km&&km[0])||{}, r=(rt&&rt[0])||{};
+      // VALUE: earnings yield, defensively from whichever field exists
+      let ey = num(k.earningsYieldTTM) ?? num(r.earningsYieldTTM)
+            ?? (num(k.peRatioTTM)? 1/k.peRatioTTM : undefined)
+            ?? (num(r.priceEarningsRatioTTM)? 1/r.priceEarningsRatioTTM : undefined);
+      // QUALITY: ROE (or ROIC fallback)
+      let roe = num(r.returnOnEquityTTM) ?? num(k.roeTTM) ?? num(k.returnOnEquityTTM) ?? num(k.roicTTM);
+      // PRICE FACTORS: real momentum (12-1m) and annualized vol from history
+      let mom, vol;
+      const H=(hist&&hist.historical)||[];
+      if(H.length>60){
+        const closes=H.slice().reverse().map(d=>d.close).filter(x=>typeof x==="number"); // oldest->newest
+        const n=closes.length, skip=closes[Math.max(0,n-1-21)], back=closes[Math.max(0,n-1-252)];
+        if(back) mom = skip/back - 1;
+        const rr=[]; for(let i=1;i<closes.length;i++) rr.push(closes[i]/closes[i-1]-1);
+        const m=rr.reduce((a,b)=>a+b,0)/rr.length;
+        vol=Math.sqrt(rr.reduce((a,b)=>a+(b-m)**2,0)/rr.length)*Math.sqrt(252);
+      }
+      if(ey!==undefined||roe!==undefined) realFund++;
+      if(mom!==undefined&&vol!==undefined) realPx++;
       out.push({ ticker:t, sector:p.sector||"Unknown",
-        ey: rt.earningsYieldTTM ?? (q.pe?1/q.pe:0.04),
-        roe: rt.returnOnEquityTTM ?? 0.15,
-        mom: q.price&&q.yearLow&&q.yearHigh ? (q.price-(q.yearHigh+q.yearLow)/2)/((q.yearHigh+q.yearLow)/2) : 0,
-        vol: 0.30 });   // vol/momentum precise calc needs price history (next iteration)
+                 ey: ey??0.04, roe: roe??0.15, mom: mom??0, vol: vol??0.30 });
     }
     if(out.length<2){ note.textContent="Need at least two valid tickers."; return; }
-    note.textContent="Live data loaded ("+out.length+" names). Note: momentum/low-vol are approximate until price-history is wired in.";
     refresh(out);
-  }catch(e){ note.textContent="Couldn’t load — check the key, your plan’s endpoints, or rate limit. ("+e.message+")"; }
+    const ok = realFund===out.length && realPx===out.length;
+    note.innerHTML = `Loaded ${out.length}. Real fundamentals <b>${realFund}/${out.length}</b>, real price factors <b>${realPx}/${out.length}</b>. `
+      + (ok ? "All data present." : "<span style='color:var(--clay)'>⚠ Some fields came back empty (those names use neutral defaults) — the ranking is partial; don't act on it until this reads full.</span>");
+  }catch(e){ note.textContent="Couldn’t load — "+e.message; }
 };
 
 // init
